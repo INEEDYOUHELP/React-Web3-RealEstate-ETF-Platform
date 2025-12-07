@@ -5,9 +5,10 @@
     "start": "next start"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "@openzeppelin/contracts-upgradeable": "^5.0.0",
     "@rainbow-me/rainbowkit": "^2.2.9",
     "@tanstack/react-query": "^5.90.5",
-    "ethers": "^6.15.0",
     "next": "^15.5.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -15,7 +16,11 @@
     "wagmi": "^2.18.1"
   },
   "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@openzeppelin/hardhat-upgrades": "^1.28.0",
     "@types/react": "19.2.2",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.22.5",
     "typescript": "^5.9.3"
   }
 }
