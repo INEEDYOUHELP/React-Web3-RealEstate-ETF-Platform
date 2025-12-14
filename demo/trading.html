@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交易中心 - 房地产ETF平台</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-building"></i>
+                <span>RealEstate ETF</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">首页</a></li>
+                <li><a href="assets.html" class="nav-link">资产展示</a></li>
+                <li><a href="portfolio.html" class="nav-link">投资组合</a></li>
+                <li><a href="trading.html" class="nav-link active">交易中心</a></li>
+                <li><a href="analytics.html" class="nav-link">数据分析</a></li>
+                <li><a href="about.html" class="nav-link">关于我们</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="btn-connect" id="connectWallet">
+                    <i class="fas fa-wallet"></i>
+                    连接钱包
+                </button>
+            </div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 页面头部 -->
+    <section class="trading-hero">
+        <div class="container">
+            <div class="breadcrumb">
+                <a href="index.html" class="breadcrumb-item">首页</a>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-item active">交易中心</span>
+            </div>
+            <div class="trading-header">
+                <div>
+                    <h1>交易中心</h1>
+                    <p>实时交易房地产ETF，把握市场机会</p>
+                </div>
+                <div class="market-status">
+                    <div class="status-indicator">
+                        <div class="status-dot active"></div>
+                        <span>市场开放中</span>
+                    </div>
+                    <div class="market-time">
+                        <i class="fas fa-clock"></i>
+                        <span id="marketTime">09:30 - 16:00 EST</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 交易面板 -->
+    <section class="trading-panel">
+        <div class="container">
+            <div class="trading-grid">
+                <!-- 资产选择器 -->
+                <div class="asset-selector">
+                    <h3>选择资产</h3>
+                    <div class="search-bar">
+                        <input type="text" placeholder="搜索资产名称或代码" class="form-input">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="asset-list" id="tradingAssetList">
+                        <!-- 资产列表将通过JS生成 -->
+                    </div>
+                </div>
+
+                <!-- 交易表单 -->
+                <div class="trading-form">
+                    <div class="form-header">
+                        <div class="tabs">
+                            <button class="tab-btn active" data-type="buy">买入</button>
+                            <button class="tab-btn" data-type="sell">卖出</button>
+                        </div>
+                        <div class="order-type">
+                            <select class="form-select" id="orderType">
+                                <option value="market">市价单</option>
+                                <option value="limit">限价单</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="selected-asset" id="selectedAsset">
+                        <div class="asset-info">
+                            <h4>请选择要交易的资产</h4>
+                        </div>
+                    </div>
+
+                    <div class="trading-inputs">
+                        <div class="form-group">
+                            <label class="form-label">交易数量</label>
+                            <div class="input-with-unit">
+                                <input type="number" id="quantity" class="form-input" placeholder="0">
+                                <span class="unit">份</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group" id="priceGroup" style="display: none;">
+                            <label class="form-label">限价价格</label>
+                            <div class="input-with-unit">
+                                <input type="number" id="price" class="form-input" placeholder="0.00" step="0.01">
+                                <span class="unit">USD</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">预计金额</label>
+                            <div class="estimated-amount">
+                                <span id="estimatedAmount">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="trading-summary">
+                        <div class="summary-row">
+                            <span>交易费用 (0.5%)</span>
+                            <span id="tradingFee">$0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>网络费用</span>
+                            <span id="gasFee">~$5.00</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>总计</span>
+                            <span id="totalAmount">$0.00</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-trade" id="executeTradeBtn" disabled>
+                        <i class="fas fa-exchange-alt"></i>
+                        执行交易
+                    </button>
+                </div>
+
+                <!-- 实时价格 -->
+                <div class="price-ticker">
+                    <h3>实时价格</h3>
+                    <div class="ticker-list" id="priceTicker">
+                        <!-- 价格行情将通过JS生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 订单管理 -->
+    <section class="order-management">
+        <div class="container">
+            <div class="management-tabs">
+                <div class="tab-list">
+                    <button class="tab active" data-tab="open-orders">未完成订单</button>
+                    <button class="tab" data-tab="order-history">交易历史</button>
+                    <button class="tab" data-tab="positions">当前持仓</button>
+                </div>
+            </div>
+
+            <div class="tab-content active" id="open-orders">
+                <div class="orders-table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>资产</th>
+                                <th>类型</th>
+                                <th>数量</th>
+                                <th>价格</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="openOrdersTable">
+                            <!-- 订单数据通过JS生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-content" id="order-history">
+                <div class="history-filters">
+                    <select class="form-select">
+                        <option>全部类型</option>
+                        <option>买入</option>
+                        <option>卖出</option>
+                    </select>
+                    <select class="form-select">
+                        <option>最近7天</option>
+                        <option>最近30天</option>
+                        <option>最近90天</option>
+                    </select>
+                    <button class="btn btn-outline">
+                        <i class="fas fa-download"></i>
+                        导出
+                    </button>
+                </div>
+                <div class="orders-table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>资产</th>
+                                <th>类型</th>
+                                <th>数量</th>
+                                <th>成交价格</th>
+                                <th>手续费</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderHistoryTable">
+                            <!-- 历史数据通过JS生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-content" id="positions">
+                <div class="positions-grid" id="positionsGrid">
+                    <!-- 持仓卡片通过JS生成 -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 市场深度 -->
+    <section class="market-depth">
+        <div class="container">
+            <h2>市场深度</h2>
+            <div class="depth-container">
+                <div class="depth-chart">
+                    <div class="depth-header">
+                        <span>买单深度</span>
+                        <span>卖单深度</span>
+                    </div>
+                    <div class="order-book">
+                        <div class="buy-orders">
+                            <div class="order-book-header">
+                                <span>价格</span>
+                                <span>数量</span>
+                                <span>累计</span>
+                            </div>
+                            <div class="order-list" id="buyOrders">
+                                <!-- 买单列表 -->
+                            </div>
+                        </div>
+                        <div class="current-price">
+                            <div class="price-display">
+                                <span class="price-value" id="currentPrice">$108.50</span>
+                                <span class="price-change positive" id="priceChange">+2.30 (+2.16%)</span>
+                            </div>
+                        </div>
+                        <div class="sell-orders">
+                            <div class="order-book-header">
+                                <span>价格</span>
+                                <span>数量</span>
+                                <span>累计</span>
+                            </div>
+                            <div class="order-list" id="sellOrders">
+                                <!-- 卖单列表 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-building"></i>
+                        <span>RealEstate ETF</span>
+                    </div>
+                    <p>基于Web3技术的去中心化房地产投资平台，让投资更简单、更透明、更安全。</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-telegram"></i></a>
+                        <a href="#"><i class="fab fa-discord"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>产品</h4>
+                    <ul>
+                        <li><a href="assets.html">资产展示</a></li>
+                        <li><a href="portfolio.html">投资组合</a></li>
+                        <li><a href="trading.html">交易中心</a></li>
+                        <li><a href="analytics.html">数据分析</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>支持</h4>
+                    <ul>
+                        <li><a href="#">帮助中心</a></li>
+                        <li><a href="#">API文档</a></li>
+                        <li><a href="#">联系我们</a></li>
+                        <li><a href="#">隐私政策</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>订阅</h4>
+                    <p>获取最新的市场动态和投资机会</p>
+                    <div class="newsletter">
+                        <input type="email" placeholder="输入邮箱地址">
+                        <button class="btn btn-primary">订阅</button>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 房地产ETF资产选择平台. 基于React与Web3技术构建.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/trading.js"></script>
+
+    <style>
+        .trading-hero {
+            padding: 120px 0 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .trading-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .trading-header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .trading-header p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+
+        .market-status {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .market-time {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        .trading-panel {
+            padding: 3rem 0;
+        }
+
+        .trading-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr 250px;
+            gap: 2rem;
+        }
+
+        .asset-selector,
+        .trading-form,
+        .price-ticker {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .asset-selector h3,
+        .trading-form .form-header,
+        .price-ticker h3 {
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            margin: 0;
+            font-size: 1.125rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-bar {
+            position: relative;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-bar input {
+            padding-right: 3rem;
+        }
+
+        .search-bar i {
+            position: absolute;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        .asset-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .asset-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .asset-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .asset-item.selected {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .asset-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .asset-price {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+
+        .price-value {
+            font-weight: 600;
+        }
+
+        .price-change {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+        }
+
+        .price-change.positive {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .price-change.negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+        }
+
+        .form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tabs {
+            display: flex;
+        }
+
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .selected-asset {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .trading-inputs {
+            padding: 1.5rem;
+        }
+
+        .input-with-unit {
+            position: relative;
+        }
+
+        .input-with-unit .unit {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .estimated-amount {
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .trading-summary {
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .summary-row.total {
+            border-top: 1px solid var(--border-color);
+            padding-top: 0.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .btn-trade {
+            width: 100%;
+            padding: 1rem;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-trade:hover:not(:disabled) {
+            background: var(--primary-dark);
+        }
+
+        .btn-trade:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .ticker-list {
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .ticker-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ticker-item:last-child {
+            border-bottom: none;
+        }
+
+        .ticker-symbol {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .ticker-price {
+            text-align: right;
+        }
+
+        .order-management {
+            padding: 3rem 0;
+            background: var(--bg-secondary);
+        }
+
+        .management-tabs {
+            margin-bottom: 2rem;
+        }
+
+        .tab-list {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            padding: 1rem 2rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: var(--transition);
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .orders-table-container {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .history-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+
+        .positions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .position-card {
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .market-depth {
+            padding: 3rem 0;
+        }
+
+        .market-depth h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .depth-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .depth-chart {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .depth-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .order-book {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+        }
+
+        .order-book-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .order-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .order-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .buy-orders .order-row {
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .sell-orders .order-row {
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .current-price {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .price-display {
+            text-align: center;
+        }
+
+        .price-value {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .action-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .action-btn:hover {
+            background: var(--error-color);
+            color: white;
+            border-color: var(--error-color);
+        }
+
+        @media (max-width: 768px) {
+            .trading-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .trading-header h1 {
+                font-size: 2rem;
+            }
+
+            .trading-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .market-status {
+                align-items: center;
+            }
+
+            .tab-list {
+                flex-wrap: wrap;
+            }
+
+            .tab {
+                flex: 1;
+                min-width: 120px;
+            }
+
+            .history-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .order-book {
+                grid-template-columns: 1fr;
+            }
+
+            .current-price {
+                border: none;
+                border-top: 1px solid var(--border-color);
+                border-bottom: 1px solid var(--border-color);
+            }
+        }
+    </style>
+</body>
+</html> 

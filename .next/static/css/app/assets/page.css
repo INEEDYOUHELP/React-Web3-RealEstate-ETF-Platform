@@ -1,0 +1,37 @@
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./src/app/components/layout/Breadcrumb.module.css ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************/
+.Breadcrumb_breadcrumb__uw077 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 0;
+    font-size: 0.875rem;
+}
+
+.Breadcrumb_breadcrumbItem__F1V85 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.Breadcrumb_breadcrumbLink__mMhJ_ {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.Breadcrumb_breadcrumbLink__mMhJ_:hover {
+    color: var(--primary-color);
+}
+
+.Breadcrumb_breadcrumbItem__F1V85 .Breadcrumb_active__slgwQ {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.Breadcrumb_separator__8vwTW {
+    color: var(--text-light);
+}
+
+

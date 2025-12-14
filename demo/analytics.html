@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据分析 - 房地产ETF平台</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-building"></i>
+                <span>RealEstate ETF</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">首页</a></li>
+                <li><a href="assets.html" class="nav-link">资产展示</a></li>
+                <li><a href="portfolio.html" class="nav-link">投资组合</a></li>
+                <li><a href="trading.html" class="nav-link">交易中心</a></li>
+                <li><a href="analytics.html" class="nav-link active">数据分析</a></li>
+                <li><a href="about.html" class="nav-link">关于我们</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="btn-connect" id="connectWallet">
+                    <i class="fas fa-wallet"></i>
+                    连接钱包
+                </button>
+            </div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 页面头部 -->
+    <section class="analytics-hero">
+        <div class="container">
+            <div class="breadcrumb">
+                <a href="index.html" class="breadcrumb-item">首页</a>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-item active">数据分析</span>
+            </div>
+            <div class="analytics-header">
+                <div>
+                    <h1>数据分析中心</h1>
+                    <p>深度市场分析，洞察投资机会</p>
+                </div>
+                <div class="analysis-controls">
+                    <select class="form-select" id="timeRange">
+                        <option value="7d">近7天</option>
+                        <option value="30d">近30天</option>
+                        <option value="90d" selected>近90天</option>
+                        <option value="1y">近1年</option>
+                    </select>
+                    <button class="btn btn-outline" id="exportData">
+                        <i class="fas fa-download"></i>
+                        导出数据
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 市场概览 -->
+    <section class="market-overview">
+        <div class="container">
+            <h2>市场概览</h2>
+            <div class="overview-grid">
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value" id="totalMarketCap">$2.54B</div>
+                        <div class="metric-label">总市值</div>
+                        <div class="metric-change positive">+5.2% 本周</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value" id="tradingVolume">$89.5M</div>
+                        <div class="metric-label">24小时交易量</div>
+                        <div class="metric-change negative">-2.1% 昨日</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value" id="activeAssets">156</div>
+                        <div class="metric-label">活跃资产</div>
+                        <div class="metric-change positive">+3 新增</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value" id="activeUsers">15.2K</div>
+                        <div class="metric-label">活跃用户</div>
+                        <div class="metric-change positive">+8.9% 本月</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 图表分析 -->
+    <section class="chart-analysis">
+        <div class="container">
+            <div class="charts-grid">
+                <!-- 市场趋势图 -->
+                <div class="chart-container large">
+                    <div class="chart-header">
+                        <h3>市场趋势分析</h3>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" data-metric="price">价格</button>
+                            <button class="chart-btn" data-metric="volume">交易量</button>
+                            <button class="chart-btn" data-metric="market-cap">市值</button>
+                        </div>
+                    </div>
+                    <div class="chart-canvas">
+                        <canvas id="trendChart" width="800" height="400"></canvas>
+                    </div>
+                </div>
+
+                <!-- 地区分布 -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>地区分布</h3>
+                        <div class="chart-filter">
+                            <select class="form-select">
+                                <option>按市值</option>
+                                <option>按交易量</option>
+                                <option>按资产数量</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-canvas">
+                        <canvas id="regionChart" width="400" height="300"></canvas>
+                    </div>
+                    <div class="chart-legend" id="regionLegend">
+                        <!-- 图例通过JS生成 -->
+                    </div>
+                </div>
+
+                <!-- 收益率分布 -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>收益率分布</h3>
+                        <div class="chart-info">
+                            <i class="fas fa-info-circle" title="显示各资产的年化收益率分布"></i>
+                        </div>
+                    </div>
+                    <div class="chart-canvas">
+                        <canvas id="yieldChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+
+                <!-- 风险回报分析 -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>风险回报矩阵</h3>
+                        <div class="chart-info">
+                            <i class="fas fa-info-circle" title="X轴为风险，Y轴为回报"></i>
+                        </div>
+                    </div>
+                    <div class="chart-canvas">
+                        <canvas id="riskReturnChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 排行榜 -->
+    <section class="rankings">
+        <div class="container">
+            <div class="rankings-grid">
+                <!-- 涨幅榜 -->
+                <div class="ranking-panel">
+                    <div class="panel-header">
+                        <h3>涨幅榜</h3>
+                        <span class="time-label">24小时</span>
+                    </div>
+                    <div class="ranking-list" id="gainersRanking">
+                        <!-- 排行数据通过JS生成 -->
+                    </div>
+                </div>
+
+                <!-- 跌幅榜 -->
+                <div class="ranking-panel">
+                    <div class="panel-header">
+                        <h3>跌幅榜</h3>
+                        <span class="time-label">24小时</span>
+                    </div>
+                    <div class="ranking-list" id="losersRanking">
+                        <!-- 排行数据通过JS生成 -->
+                    </div>
+                </div>
+
+                <!-- 交易量榜 -->
+                <div class="ranking-panel">
+                    <div class="panel-header">
+                        <h3>交易量榜</h3>
+                        <span class="time-label">24小时</span>
+                    </div>
+                    <div class="ranking-list" id="volumeRanking">
+                        <!-- 排行数据通过JS生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 市场分析报告 -->
+    <section class="market-reports">
+        <div class="container">
+            <div class="section-header">
+                <h2>市场分析报告</h2>
+                <button class="btn btn-primary" id="generateReport">
+                    <i class="fas fa-file-alt"></i>
+                    生成报告
+                </button>
+            </div>
+            
+            <div class="reports-grid">
+                <div class="report-card">
+                    <div class="report-header">
+                        <h3>北美市场分析</h3>
+                        <span class="report-date">2024-03-15</span>
+                    </div>
+                    <div class="report-content">
+                        <p>北美房地产ETF市场本周表现强劲，主要受到纽约和洛杉矶商业地产需求增长的推动...</p>
+                        <div class="report-metrics">
+                            <div class="metric">
+                                <span class="label">平均收益率</span>
+                                <span class="value positive">+7.8%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">交易活跃度</span>
+                                <span class="value">高</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="report-actions">
+                        <button class="btn btn-outline btn-sm">查看详情</button>
+                    </div>
+                </div>
+
+                <div class="report-card">
+                    <div class="report-header">
+                        <h3>亚太市场分析</h3>
+                        <span class="report-date">2024-03-15</span>
+                    </div>
+                    <div class="report-content">
+                        <p>亚太地区房地产ETF继续保持稳定增长，新加坡和东京市场表现尤为突出...</p>
+                        <div class="report-metrics">
+                            <div class="metric">
+                                <span class="label">平均收益率</span>
+                                <span class="value positive">+6.5%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">交易活跃度</span>
+                                <span class="value">中等</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="report-actions">
+                        <button class="btn btn-outline btn-sm">查看详情</button>
+                    </div>
+                </div>
+
+                <div class="report-card">
+                    <div class="report-header">
+                        <h3>欧洲市场分析</h3>
+                        <span class="report-date">2024-03-15</span>
+                    </div>
+                    <div class="report-content">
+                        <p>欧洲房地产ETF市场面临一定压力，但伦敦金融城等核心区域仍保持韧性...</p>
+                        <div class="report-metrics">
+                            <div class="metric">
+                                <span class="label">平均收益率</span>
+                                <span class="value positive">+4.2%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="label">交易活跃度</span>
+                                <span class="value">中等</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="report-actions">
+                        <button class="btn btn-outline btn-sm">查看详情</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 技术指标 -->
+    <section class="technical-indicators">
+        <div class="container">
+            <h2>技术指标</h2>
+            <div class="indicators-grid">
+                <div class="indicator-card">
+                    <div class="indicator-header">
+                        <h4>市场情绪指数</h4>
+                        <span class="indicator-value" id="sentimentIndex">72</span>
+                    </div>
+                    <div class="indicator-gauge">
+                        <div class="gauge-bar">
+                            <div class="gauge-fill" style="width: 72%"></div>
+                        </div>
+                        <div class="gauge-labels">
+                            <span>恐惧</span>
+                            <span>贪婪</span>
+                        </div>
+                    </div>
+                    <div class="indicator-status">乐观</div>
+                </div>
+
+                <div class="indicator-card">
+                    <div class="indicator-header">
+                        <h4>波动率指数</h4>
+                        <span class="indicator-value" id="volatilityIndex">15.8%</span>
+                    </div>
+                    <div class="indicator-gauge">
+                        <div class="gauge-bar">
+                            <div class="gauge-fill warning" style="width: 32%"></div>
+                        </div>
+                        <div class="gauge-labels">
+                            <span>低</span>
+                            <span>高</span>
+                        </div>
+                    </div>
+                    <div class="indicator-status">中等</div>
+                </div>
+
+                <div class="indicator-card">
+                    <div class="indicator-header">
+                        <h4>流动性指数</h4>
+                        <span class="indicator-value" id="liquidityIndex">86</span>
+                    </div>
+                    <div class="indicator-gauge">
+                        <div class="gauge-bar">
+                            <div class="gauge-fill success" style="width: 86%"></div>
+                        </div>
+                        <div class="gauge-labels">
+                            <span>低</span>
+                            <span>高</span>
+                        </div>
+                    </div>
+                    <div class="indicator-status">良好</div>
+                </div>
+
+                <div class="indicator-card">
+                    <div class="indicator-header">
+                        <h4>相关性指数</h4>
+                        <span class="indicator-value" id="correlationIndex">0.65</span>
+                    </div>
+                    <div class="indicator-gauge">
+                        <div class="gauge-bar">
+                            <div class="gauge-fill" style="width: 65%"></div>
+                        </div>
+                        <div class="gauge-labels">
+                            <span>独立</span>
+                            <span>相关</span>
+                        </div>
+                    </div>
+                    <div class="indicator-status">中度相关</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-building"></i>
+                        <span>RealEstate ETF</span>
+                    </div>
+                    <p>基于Web3技术的去中心化房地产投资平台，让投资更简单、更透明、更安全。</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-telegram"></i></a>
+                        <a href="#"><i class="fab fa-discord"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>产品</h4>
+                    <ul>
+                        <li><a href="assets.html">资产展示</a></li>
+                        <li><a href="portfolio.html">投资组合</a></li>
+                        <li><a href="trading.html">交易中心</a></li>
+                        <li><a href="analytics.html">数据分析</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>支持</h4>
+                    <ul>
+                        <li><a href="#">帮助中心</a></li>
+                        <li><a href="#">API文档</a></li>
+                        <li><a href="#">联系我们</a></li>
+                        <li><a href="#">隐私政策</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>订阅</h4>
+                    <p>获取最新的市场动态和投资机会</p>
+                    <div class="newsletter">
+                        <input type="email" placeholder="输入邮箱地址">
+                        <button class="btn btn-primary">订阅</button>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 房地产ETF资产选择平台. 基于React与Web3技术构建.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/analytics.js"></script>
+
+    <style>
+        .analytics-hero {
+            padding: 120px 0 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .analytics-header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .analytics-header p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+
+        .analysis-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .market-overview {
+            padding: 3rem 0;
+            background: var(--bg-secondary);
+        }
+
+        .market-overview h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .metric-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .metric-content {
+            flex: 1;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-change {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .metric-change.positive {
+            color: var(--success-color);
+        }
+
+        .metric-change.negative {
+            color: var(--error-color);
+        }
+
+        .chart-analysis {
+            padding: 3rem 0;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            grid-template-areas:
+                "large region"
+                "yield risk";
+        }
+
+        .chart-container.large {
+            grid-area: large;
+            grid-row: 1 / 3;
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .chart-header {
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chart-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.875rem;
+        }
+
+        .chart-btn:hover,
+        .chart-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .chart-canvas {
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-legend {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .rankings {
+            padding: 3rem 0;
+            background: var(--bg-secondary);
+        }
+
+        .rankings-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .ranking-panel {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .time-label {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .ranking-list {
+            padding: 1rem;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ranking-item:last-child {
+            border-bottom: none;
+        }
+
+        .ranking-rank {
+            width: 30px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .ranking-info {
+            flex: 1;
+            margin-left: 1rem;
+        }
+
+        .ranking-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .ranking-symbol {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .ranking-value {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .market-reports {
+            padding: 3rem 0;
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .report-card {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .report-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .report-header {
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .report-header h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .report-date {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .report-content {
+            padding: 1.5rem;
+        }
+
+        .report-content p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .report-metrics {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .report-metrics .metric {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .report-metrics .label {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .report-metrics .value {
+            font-weight: 600;
+        }
+
+        .report-actions {
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .technical-indicators {
+            padding: 3rem 0;
+            background: var(--bg-secondary);
+        }
+
+        .technical-indicators h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .indicator-card {
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .indicator-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .indicator-header h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .indicator-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .indicator-gauge {
+            margin-bottom: 1rem;
+        }
+
+        .gauge-bar {
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .gauge-fill.success {
+            background: var(--success-color);
+        }
+
+        .gauge-fill.warning {
+            background: var(--warning-color);
+        }
+
+        .gauge-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .indicator-status {
+            text-align: center;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .analytics-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .analytics-header h1 {
+                font-size: 2rem;
+            }
+
+            .analysis-controls {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+                grid-template-areas: none;
+            }
+
+            .chart-container.large {
+                grid-row: auto;
+            }
+
+            .rankings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-controls {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</body>
+</html> 

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资产展示 - 房地产ETF平台</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-building"></i>
+                <span>RealEstate ETF</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">首页</a></li>
+                <li><a href="assets.html" class="nav-link active">资产展示</a></li>
+                <li><a href="portfolio.html" class="nav-link">投资组合</a></li>
+                <li><a href="trading.html" class="nav-link">交易中心</a></li>
+                <li><a href="analytics.html" class="nav-link">数据分析</a></li>
+                <li><a href="about.html" class="nav-link">关于我们</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="btn-connect" id="connectWallet">
+                    <i class="fas fa-wallet"></i>
+                    连接钱包
+                </button>
+            </div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 页面头部 -->
+    <section class="page-hero">
+        <div class="container">
+            <div class="breadcrumb">
+                <a href="index.html" class="breadcrumb-item">首页</a>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-item active">资产展示</span>
+            </div>
+            <h1 class="page-title">全球房地产资产</h1>
+            <p class="page-subtitle">探索优质房地产投资机会，构建多元化投资组合</p>
+        </div>
+    </section>
+
+    <!-- 筛选器 -->
+    <section class="filters-section">
+        <div class="container">
+            <div class="filters-container">
+                <div class="filter-group">
+                    <label class="filter-label">地区</label>
+                    <div class="dropdown">
+                        <div class="dropdown-toggle">
+                            <span>所有地区</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="dropdown-menu">
+                            <a href="#" class="dropdown-item">所有地区</a>
+                            <a href="#" class="dropdown-item">北美</a>
+                            <a href="#" class="dropdown-item">欧洲</a>
+                            <a href="#" class="dropdown-item">亚太</a>
+                            <a href="#" class="dropdown-item">中东</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">资产类型</label>
+                    <div class="dropdown">
+                        <div class="dropdown-toggle">
+                            <span>所有类型</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="dropdown-menu">
+                            <a href="#" class="dropdown-item">所有类型</a>
+                            <a href="#" class="dropdown-item">商业地产</a>
+                            <a href="#" class="dropdown-item">住宅地产</a>
+                            <a href="#" class="dropdown-item">工业地产</a>
+                            <a href="#" class="dropdown-item">零售地产</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">收益率</label>
+                    <div class="dropdown">
+                        <div class="dropdown-toggle">
+                            <span>所有收益</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="dropdown-menu">
+                            <a href="#" class="dropdown-item">所有收益</a>
+                            <a href="#" class="dropdown-item">0-5%</a>
+                            <a href="#" class="dropdown-item">5-10%</a>
+                            <a href="#" class="dropdown-item">10%+</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">搜索</label>
+                    <div class="search-box">
+                        <input type="text" placeholder="搜索资产名称或位置" class="form-input">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-filter"></i>
+                        应用筛选
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 排序选项 -->
+    <section class="sorting-section">
+        <div class="container">
+            <div class="sorting-container">
+                <div class="sort-info">
+                    <span>显示 1-12 of 156 项资产</span>
+                </div>
+                <div class="sort-controls">
+                    <label>排序方式：</label>
+                    <select class="form-select">
+                        <option>最新上线</option>
+                        <option>收益率由高到低</option>
+                        <option>收益率由低到高</option>
+                        <option>市值由大到小</option>
+                        <option>市值由小到大</option>
+                    </select>
+                </div>
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="grid">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="view-btn" data-view="list">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 资产列表 -->
+    <section class="assets-listing">
+        <div class="container">
+            <div class="assets-grid" id="assetsGrid">
+                <!-- 资产卡片会通过JavaScript动态生成 -->
+            </div>
+            
+            <!-- 分页 -->
+            <div class="pagination">
+                <a href="#" class="pagination-item disabled">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                <a href="#" class="pagination-item active">1</a>
+                <a href="#" class="pagination-item">2</a>
+                <a href="#" class="pagination-item">3</a>
+                <span class="pagination-item">...</span>
+                <a href="#" class="pagination-item">13</a>
+                <a href="#" class="pagination-item">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-building"></i>
+                        <span>RealEstate ETF</span>
+                    </div>
+                    <p>基于Web3技术的去中心化房地产投资平台，让投资更简单、更透明、更安全。</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-telegram"></i></a>
+                        <a href="#"><i class="fab fa-discord"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>产品</h4>
+                    <ul>
+                        <li><a href="assets.html">资产展示</a></li>
+                        <li><a href="portfolio.html">投资组合</a></li>
+                        <li><a href="trading.html">交易中心</a></li>
+                        <li><a href="analytics.html">数据分析</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>支持</h4>
+                    <ul>
+                        <li><a href="#">帮助中心</a></li>
+                        <li><a href="#">API文档</a></li>
+                        <li><a href="#">联系我们</a></li>
+                        <li><a href="#">隐私政策</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>订阅</h4>
+                    <p>获取最新的市场动态和投资机会</p>
+                    <div class="newsletter">
+                        <input type="email" placeholder="输入邮箱地址">
+                        <button class="btn btn-primary">订阅</button>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 房地产ETF资产选择平台. 基于React与Web3技术构建.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/assets.js"></script>
+
+    <style>
+        .page-hero {
+            padding: 120px 0 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .page-subtitle {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            max-width: 600px;
+        }
+
+        .filters-section {
+            padding: 2rem 0;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filters-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding-right: 3rem;
+        }
+
+        .search-box i {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        .sorting-section {
+            padding: 1.5rem 0;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sorting-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .sort-info {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .sort-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sort-controls label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .view-btn {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .view-btn:hover,
+        .view-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .assets-listing {
+            padding: 3rem 0;
+        }
+
+        .asset-card-extended {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .asset-card-extended:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .asset-image-extended {
+            position: relative;
+            height: 250px;
+            overflow: hidden;
+        }
+
+        .asset-image-extended img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .asset-card-extended:hover .asset-image-extended img {
+            transform: scale(1.05);
+        }
+
+        .asset-tags {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .asset-tag {
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--text-primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .asset-bookmark {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .asset-bookmark:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .asset-info-extended {
+            padding: 1.5rem;
+        }
+
+        .asset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .asset-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .asset-yield {
+            background: var(--success-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .asset-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .asset-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn-invest {
+            flex: 1;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-invest:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-details {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-details:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .filters-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .sorting-container {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+
+            .asset-details {
+                grid-template-columns: 1fr;
+            }
+
+            .asset-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</body>
+</html> 

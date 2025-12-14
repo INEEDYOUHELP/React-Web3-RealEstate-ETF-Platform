@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关于我们 - 房地产ETF平台</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-building"></i>
+                <span>RealEstate ETF</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">首页</a></li>
+                <li><a href="assets.html" class="nav-link">资产展示</a></li>
+                <li><a href="portfolio.html" class="nav-link">投资组合</a></li>
+                <li><a href="trading.html" class="nav-link">交易中心</a></li>
+                <li><a href="analytics.html" class="nav-link">数据分析</a></li>
+                <li><a href="about.html" class="nav-link active">关于我们</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="btn-connect" id="connectWallet">
+                    <i class="fas fa-wallet"></i>
+                    连接钱包
+                </button>
+            </div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 页面头部 -->
+    <section class="about-hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>关于房地产ETF平台</h1>
+                <p>基于React与Web3技术构建的去中心化房地产投资平台</p>
+                <div class="hero-badges">
+                    <span class="badge badge-outline">本科毕业设计项目</span>
+                    <span class="badge badge-outline">Web3技术</span>
+                    <span class="badge badge-outline">React框架</span>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="tech-showcase">
+                    <div class="tech-item">
+                        <i class="fab fa-react"></i>
+                        <span>React</span>
+                    </div>
+                    <div class="tech-item">
+                        <i class="fab fa-ethereum"></i>
+                        <span>Ethereum</span>
+                    </div>
+                    <div class="tech-item">
+                        <i class="fas fa-cube"></i>
+                        <span>Web3</span>
+                    </div>
+                    <div class="tech-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>DeFi</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 项目介绍 -->
+    <section class="project-intro">
+        <div class="container">
+            <div class="intro-grid">
+                <div class="intro-content">
+                    <h2>项目背景</h2>
+                    <p>随着区块链技术的快速发展和传统金融与数字资产的融合，房地产投资领域正在经历前所未有的变革。本项目旨在构建一个基于Web3技术的去中心化房地产ETF投资平台，让普通投资者能够便捷地参与全球房地产市场。</p>
+                    
+                    <div class="key-features">
+                        <div class="feature-item">
+                            <i class="fas fa-shield-alt"></i>
+                            <div>
+                                <h4>安全透明</h4>
+                                <p>基于区块链技术，所有交易记录公开透明，资产安全可靠</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-globe"></i>
+                            <div>
+                                <h4>全球投资</h4>
+                                <p>覆盖全球主要城市的优质房地产资产，实现投资全球化</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-coins"></i>
+                            <div>
+                                <h4>低门槛</h4>
+                                <p>降低房地产投资门槛，让更多人享受房地产投资收益</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-card">
+                    <h3>项目数据</h3>
+                    <div class="stat-item">
+                        <div class="stat-number">$2.5B+</div>
+                        <div class="stat-label">平台总资产</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">15K+</div>
+                        <div class="stat-label">注册用户</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">500+</div>
+                        <div class="stat-label">房产项目</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">25+</div>
+                        <div class="stat-label">覆盖城市</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 技术架构 -->
+    <section class="tech-architecture">
+        <div class="container">
+            <div class="section-header">
+                <h2>技术架构</h2>
+                <p>采用现代化的技术栈，构建安全、高效、用户友好的投资平台</p>
+            </div>
+            
+            <div class="architecture-diagram">
+                <div class="layer frontend">
+                    <h3>前端层</h3>
+                    <div class="tech-stack">
+                        <div class="tech-card">
+                            <i class="fab fa-react"></i>
+                            <h4>React</h4>
+                            <p>构建用户界面</p>
+                        </div>
+                        <div class="tech-card">
+                            <i class="fab fa-js-square"></i>
+                            <h4>JavaScript</h4>
+                            <p>交互逻辑处理</p>
+                        </div>
+                        <div class="tech-card">
+                            <i class="fab fa-css3-alt"></i>
+                            <h4>CSS3</h4>
+                            <p>样式与动画</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="layer web3">
+                    <h3>Web3层</h3>
+                    <div class="tech-stack">
+                        <div class="tech-card">
+                            <i class="fab fa-ethereum"></i>
+                            <h4>Ethers.js</h4>
+                            <p>区块链交互</p>
+                        </div>
+                        <div class="tech-card">
+                            <i class="fas fa-wallet"></i>
+                            <h4>MetaMask</h4>
+                            <p>钱包连接</p>
+                        </div>
+                        <div class="tech-card">
+                            <i class="fas fa-file-contract"></i>
+                            <h4>Smart Contracts</h4>
+                            <p>智能合约</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="layer blockchain">
+                    <h3>区块链层</h3>
+                    <div class="tech-stack">
+                        <div class="tech-card">
+                            <i class="fab fa-ethereum"></i>
+                            <h4>Ethereum</h4>
+                            <p>主要区块链网络</p>
+                        </div>
+                        <div class="tech-card">
+                            <i class="fas fa-coins"></i>
+                            <h4>ERC-20</h4>
+                            <p>代币标准</p>
+                        </div>
+                        <div class="tech-card">
+                            <i class="fas fa-database"></i>
+                            <h4>IPFS</h4>
+                            <p>去中心化存储</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 开发进程 -->
+    <section class="development-timeline">
+        <div class="container">
+            <div class="section-header">
+                <h2>开发进程</h2>
+                <p>按照毕业设计任务书要求，分阶段完成项目开发</p>
+            </div>
+            
+            <div class="timeline">
+                <div class="timeline-item completed">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-date">第1-3周</div>
+                        <div class="timeline-title">UI设计与原型搭建</div>
+                        <div class="timeline-text">
+                            完成平台整体UI/UX设计，构建响应式网页原型，设计房产展示界面与交互流程。
+                        </div>
+                        <div class="timeline-deliverables">
+                            <span class="deliverable">✓ 页面设计稿</span>
+                            <span class="deliverable">✓ 交互原型</span>
+                            <span class="deliverable">✓ 响应式布局</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item completed">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-date">第4-6周</div>
+                        <div class="timeline-title">合约调用与资产加载</div>
+                        <div class="timeline-text">
+                            集成Web3/Ethers.js，实现钱包连接功能，开发智能合约交互接口，加载链上资产数据。
+                        </div>
+                        <div class="timeline-deliverables">
+                            <span class="deliverable">✓ 钱包集成</span>
+                            <span class="deliverable">✓ 合约接口</span>
+                            <span class="deliverable">✓ 数据加载</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item active">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-date">第7-10周</div>
+                        <div class="timeline-title">组合功能开发</div>
+                        <div class="timeline-text">
+                            实现用户自定义投资组合功能，开发资产选择与配置逻辑，完成交易提交流程。
+                        </div>
+                        <div class="timeline-deliverables">
+                            <span class="deliverable">⭘ 组合管理</span>
+                            <span class="deliverable">⭘ 交易功能</span>
+                            <span class="deliverable">⭘ 风险评估</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-date">第11-12周</div>
+                        <div class="timeline-title">测试与体验优化</div>
+                        <div class="timeline-text">
+                            进行全面系统测试，优化页面响应速度，提升用户体验，修复发现的问题。
+                        </div>
+                        <div class="timeline-deliverables">
+                            <span class="deliverable">○ 功能测试</span>
+                            <span class="deliverable">○ 性能优化</span>
+                            <span class="deliverable">○ 兼容性测试</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-date">第13-16周</div>
+                        <div class="timeline-title">撰写论文与答辩准备</div>
+                        <div class="timeline-text">
+                            汇总前端开发成果，撰写技术文档，准备毕业设计答辩材料。
+                        </div>
+                        <div class="timeline-deliverables">
+                            <span class="deliverable">○ 技术文档</span>
+                            <span class="deliverable">○ 毕业论文</span>
+                            <span class="deliverable">○ 答辩准备</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 项目成果展示 -->
+    <section class="project-showcase">
+        <div class="container">
+            <div class="section-header">
+                <h2>项目成果展示</h2>
+                <p>完整的房地产ETF投资平台前端原型</p>
+            </div>
+            
+            <div class="showcase-grid">
+                <div class="showcase-item">
+                    <div class="showcase-image">
+                        <div class="screenshot-placeholder">
+                            <i class="fas fa-home"></i>
+                            <h4>首页展示</h4>
+                        </div>
+                    </div>
+                    <div class="showcase-content">
+                        <h3>响应式主页设计</h3>
+                        <p>采用现代化设计语言，展示平台核心功能和价值主张，支持多设备适配。</p>
+                        <div class="showcase-tags">
+                            <span class="tag">响应式设计</span>
+                            <span class="tag">动画效果</span>
+                            <span class="tag">用户引导</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="showcase-item">
+                    <div class="showcase-image">
+                        <div class="screenshot-placeholder">
+                            <i class="fas fa-building"></i>
+                            <h4>资产展示</h4>
+                        </div>
+                    </div>
+                    <div class="showcase-content">
+                        <h3>资产浏览与筛选</h3>
+                        <p>提供丰富的筛选条件和排序方式，帮助用户快速找到合适的投资标的。</p>
+                        <div class="showcase-tags">
+                            <span class="tag">智能筛选</span>
+                            <span class="tag">数据可视化</span>
+                            <span class="tag">详情展示</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="showcase-item">
+                    <div class="showcase-image">
+                        <div class="screenshot-placeholder">
+                            <i class="fas fa-chart-pie"></i>
+                            <h4>投资组合</h4>
+                        </div>
+                    </div>
+                    <div class="showcase-content">
+                        <h3>组合管理与分析</h3>
+                        <p>直观的图表展示投资组合状况，支持个性化配置和风险评估。</p>
+                        <div class="showcase-tags">
+                            <span class="tag">图表分析</span>
+                            <span class="tag">收益追踪</span>
+                            <span class="tag">风险管理</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="showcase-item">
+                    <div class="showcase-image">
+                        <div class="screenshot-placeholder">
+                            <i class="fas fa-exchange-alt"></i>
+                            <h4>交易中心</h4>
+                        </div>
+                    </div>
+                    <div class="showcase-content">
+                        <h3>实时交易功能</h3>
+                        <p>模拟真实交易环境，提供市价单、限价单等多种交易方式。</p>
+                        <div class="showcase-tags">
+                            <span class="tag">实时数据</span>
+                            <span class="tag">订单管理</span>
+                            <span class="tag">市场深度</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="showcase-item">
+                    <div class="showcase-image">
+                        <div class="screenshot-placeholder">
+                            <i class="fas fa-chart-line"></i>
+                            <h4>数据分析</h4>
+                        </div>
+                    </div>
+                    <div class="showcase-content">
+                        <h3>深度市场分析</h3>
+                        <p>提供多维度数据分析和可视化图表，辅助投资决策。</p>
+                        <div class="showcase-tags">
+                            <span class="tag">多图表类型</span>
+                            <span class="tag">技术指标</span>
+                            <span class="tag">报告生成</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="showcase-item">
+                    <div class="showcase-image">
+                        <div class="screenshot-placeholder">
+                            <i class="fas fa-wallet"></i>
+                            <h4>Web3集成</h4>
+                        </div>
+                    </div>
+                    <div class="showcase-content">
+                        <h3>钱包连接功能</h3>
+                        <p>无缝集成MetaMask等主流Web3钱包，支持多链资产管理。</p>
+                        <div class="showcase-tags">
+                            <span class="tag">钱包集成</span>
+                            <span class="tag">多链支持</span>
+                            <span class="tag">安全认证</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 技术亮点 -->
+            <div class="tech-highlights">
+                <h3>技术亮点</h3>
+                <div class="highlights-grid">
+                    <div class="highlight-item">
+                        <div class="highlight-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h4>完全响应式</h4>
+                        <p>支持桌面、平板、手机等各种设备，确保良好的用户体验</p>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-icon">
+                            <i class="fas fa-paint-brush"></i>
+                        </div>
+                        <h4>现代化UI</h4>
+                        <p>采用毛玻璃效果、渐变背景、动画交互等现代设计元素</p>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-icon">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <h4>模块化代码</h4>
+                        <p>结构清晰的代码组织，便于维护和扩展</p>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <h4>性能优化</h4>
+                        <p>优化加载速度，使用现代浏览器特性提升性能</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 核心功能 -->
+    <section class="core-features">
+        <div class="container">
+            <div class="section-header">
+                <h2>核心功能</h2>
+                <p>为用户提供完整的房地产ETF投资体验</p>
+            </div>
+            
+            <div class="features-showcase">
+                <div class="feature-card-large">
+                    <div class="feature-image">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>资产展示</h3>
+                        <p>展示全球优质房地产资产，提供详细的投资信息，包括位置、收益率、风险评级等关键数据。</p>
+                        <ul>
+                            <li>多维度筛选功能</li>
+                            <li>实时价格更新</li>
+                            <li>详细资产信息</li>
+                            <li>投资风险评估</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="feature-card-large">
+                    <div class="feature-image">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>投资组合管理</h3>
+                        <p>智能投资组合构建工具，帮助用户根据风险偏好和投资目标，构建最优的资产配置方案。</p>
+                        <ul>
+                            <li>个性化资产配置</li>
+                            <li>风险分散优化</li>
+                            <li>收益预测分析</li>
+                            <li>自动重平衡建议</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="feature-card-large">
+                    <div class="feature-image">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>智能交易</h3>
+                        <p>基于区块链的去中心化交易系统，确保交易透明、安全，支持实时交易和限价交易。</p>
+                        <ul>
+                            <li>去中心化交易</li>
+                            <li>智能合约执行</li>
+                            <li>低手续费</li>
+                            <li>即时结算</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="feature-card-large">
+                    <div class="feature-image">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>数据分析</h3>
+                        <p>提供专业的市场分析工具，包括趋势分析、收益计算、风险评估等，辅助投资决策。</p>
+                        <ul>
+                            <li>市场趋势分析</li>
+                            <li>收益率计算</li>
+                            <li>风险指标监控</li>
+                            <li>投资报告生成</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 联系信息 -->
+    <section class="contact-info">
+        <div class="container">
+            <div class="contact-grid">
+                <div class="contact-content">
+                    <h2>联系我们</h2>
+                    <p>如果您对本项目有任何疑问或建议，欢迎与我们联系。</p>
+                    
+                    <div class="contact-methods">
+                        <div class="contact-method">
+                            <i class="fas fa-envelope"></i>
+                            <div>
+                                <h4>邮箱</h4>
+                                <p>contact@realestate-etf.com</p>
+                            </div>
+                        </div>
+                        <div class="contact-method">
+                            <i class="fab fa-github"></i>
+                            <div>
+                                <h4>GitHub</h4>
+                                <p>github.com/realestate-etf</p>
+                            </div>
+                        </div>
+                        <div class="contact-method">
+                            <i class="fas fa-graduation-cap"></i>
+                            <div>
+                                <h4>院校</h4>
+                                <p>计算机科学与技术专业</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="project-info">
+                    <h3>项目信息</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">项目类型</span>
+                            <span class="value">本科毕业设计</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">技术栈</span>
+                            <span class="value">React + Web3 + Ethereum</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">开发周期</span>
+                            <span class="value">16周</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">版本</span>
+                            <span class="value">v1.0.0</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">许可证</span>
+                            <span class="value">MIT License</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">更新时间</span>
+                            <span class="value">2024年3月</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-building"></i>
+                        <span>RealEstate ETF</span>
+                    </div>
+                    <p>基于Web3技术的去中心化房地产投资平台，让投资更简单、更透明、更安全。</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-telegram"></i></a>
+                        <a href="#"><i class="fab fa-discord"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>产品</h4>
+                    <ul>
+                        <li><a href="assets.html">资产展示</a></li>
+                        <li><a href="portfolio.html">投资组合</a></li>
+                        <li><a href="trading.html">交易中心</a></li>
+                        <li><a href="analytics.html">数据分析</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>支持</h4>
+                    <ul>
+                        <li><a href="#">帮助中心</a></li>
+                        <li><a href="#">API文档</a></li>
+                        <li><a href="#">联系我们</a></li>
+                        <li><a href="#">隐私政策</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>订阅</h4>
+                    <p>获取最新的市场动态和投资机会</p>
+                    <div class="newsletter">
+                        <input type="email" placeholder="输入邮箱地址">
+                        <button class="btn btn-primary">订阅</button>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 房地产ETF资产选择平台. 基于React与Web3技术构建.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+
+    <style>
+        .about-hero {
+            padding: 120px 0 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .about-hero .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .hero-content h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .tech-showcase {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .tech-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .tech-item:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .tech-item i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .tech-item span {
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .project-intro {
+            padding: 5rem 0;
+        }
+
+        .intro-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 4rem;
+            align-items: start;
+        }
+
+        .intro-content h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .intro-content p {
+            font-size: 1.125rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .key-features {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .feature-item i {
+            width: 50px;
+            height: 50px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .feature-item h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-item p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .stats-card {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-xl);
+            padding: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            position: sticky;
+            top: 2rem;
+        }
+
+        .stats-card h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .stats-card .stat-item {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .stats-card .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-card .stat-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .tech-architecture {
+            padding: 5rem 0;
+            background: var(--bg-secondary);
+        }
+
+        .architecture-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .layer {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .layer h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .tech-card {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+
+        .tech-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .tech-card i {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .tech-card h4 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .tech-card p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .development-timeline {
+            padding: 5rem 0;
+        }
+
+        .timeline-item.completed .timeline-marker {
+            background: var(--success-color);
+        }
+
+        .timeline-item.active .timeline-marker {
+            background: var(--primary-color);
+        }
+
+        .timeline-deliverables {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .deliverable {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+
+        .deliverable:first-child {
+            color: var(--success-color);
+        }
+
+        .core-features {
+            padding: 5rem 0;
+            background: var(--bg-secondary);
+        }
+
+        .features-showcase {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }
+
+        .feature-card-large {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .feature-card-large:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feature-image {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .feature-image i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-content {
+            padding: 2rem;
+        }
+
+        .feature-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .feature-content p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-content li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .feature-content li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .contact-info {
+            padding: 5rem 0;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+        }
+
+        .contact-content h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .contact-content p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .contact-methods {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .contact-method {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .contact-method i {
+            width: 50px;
+            height: 50px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .contact-method h4 {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+
+        .contact-method p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .project-info {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .project-info h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-item .label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .info-item .value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* 项目成果展示样式 */
+        .project-showcase {
+            padding: 4rem 0;
+            background: var(--bg-primary);
+        }
+
+        .showcase-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .showcase-item {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .showcase-item:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .showcase-image {
+            height: 200px;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screenshot-placeholder {
+            text-align: center;
+            color: white;
+        }
+
+        .screenshot-placeholder i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .screenshot-placeholder h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .showcase-content {
+            padding: 1.5rem;
+        }
+
+        .showcase-content h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .showcase-content p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .showcase-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .tech-highlights {
+            margin-top: 3rem;
+            padding-top: 3rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .tech-highlights h3 {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+        }
+
+        .highlights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .highlight-item {
+            text-align: center;
+            padding: 2rem;
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .highlight-item:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .highlight-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .highlight-item h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .highlight-item p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .about-hero .container {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .hero-content h1 {
+                font-size: 2rem;
+            }
+
+            .tech-showcase {
+                grid-template-columns: 1fr;
+            }
+
+            .intro-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tech-stack {
+                grid-template-columns: 1fr;
+            }
+
+            .architecture-diagram {
+                gap: 1rem;
+            }
+
+            .features-showcase {
+                grid-template-columns: 1fr;
+            }
+
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .showcase-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .highlights-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+    </style>
+</body>
+</html> 
