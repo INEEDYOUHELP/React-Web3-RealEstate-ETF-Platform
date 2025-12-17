@@ -1,0 +1,108 @@
+import { Holding, Transaction } from '../types';
+
+export const portfolioSummary = {
+  totalInvestment: 125340,
+  totalValue: 135185,
+  totalReturn: 9845,
+  returnRate: 7.85,
+};
+
+export const holdings: Holding[] = [
+  {
+    id: 1,
+    name: '纽约曼哈顿商业区',
+    investment: 45000,
+    currentValue: 48600,
+    return: 3600,
+    returnRate: 8.0,
+    shares: 450,
+    location: '美国 · 纽约',
+    type: '商业地产',
+  },
+  {
+    id: 2,
+    name: '伦敦金融城办公区',
+    investment: 35000,
+    currentValue: 37450,
+    return: 2450,
+    returnRate: 7.0,
+    shares: 350,
+    location: '英国 · 伦敦',
+    type: '商业地产',
+  },
+  {
+    id: 3,
+    name: '东京银座商业区',
+    investment: 25340,
+    currentValue: 26880,
+    return: 1540,
+    returnRate: 6.1,
+    shares: 254,
+    location: '日本 · 东京',
+    type: '零售地产',
+  },
+  {
+    id: 4,
+    name: '新加坡CBD写字楼',
+    investment: 20000,
+    currentValue: 22255,
+    return: 2255,
+    returnRate: 11.3,
+    shares: 200,
+    location: '新加坡 · 滨海湾',
+    type: '商业地产',
+  },
+];
+
+export const transactions: Transaction[] = [
+  {
+    id: 1,
+    type: 'buy',
+    assetName: '纽约曼哈顿商业区',
+    amount: 45000,
+    shares: 450,
+    price: 100,
+    date: '2024-01-15',
+    status: 'completed',
+  },
+  {
+    id: 2,
+    type: 'buy',
+    assetName: '伦敦金融城办公区',
+    amount: 35000,
+    shares: 350,
+    price: 100,
+    date: '2024-01-20',
+    status: 'completed',
+  },
+  {
+    id: 3,
+    type: 'dividend',
+    assetName: '纽约曼哈顿商业区',
+    amount: 180,
+    shares: 450,
+    date: '2024-02-01',
+    status: 'completed',
+  },
+  {
+    id: 4,
+    type: 'buy',
+    assetName: '东京银座商业区',
+    amount: 25340,
+    shares: 254,
+    price: 99.76,
+    date: '2024-02-10',
+    status: 'completed',
+  },
+  {
+    id: 5,
+    type: 'buy',
+    assetName: '新加坡CBD写字楼',
+    amount: 20000,
+    shares: 200,
+    price: 100,
+    date: '2024-03-02',
+    status: 'completed',
+  },
+];
+

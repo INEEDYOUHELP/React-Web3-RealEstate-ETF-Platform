@@ -35,3 +35,287 @@
 }
 
 
+/*!********************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./src/app/components/assets/AssetSearch.module.css ***!
+  \********************************************************************************************************************************************************************************************************************************************************************************************/
+.AssetSearch_search__GseSx {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 0.6rem 0.9rem;
+  background: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.AssetSearch_search__GseSx i {
+  color: var(--primary-color);
+}
+
+.AssetSearch_search__GseSx input {
+  border: none;
+  width: 100%;
+  outline: none;
+  font-size: 0.95rem;
+}
+
+
+/*!***************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./src/app/components/common/Button.module.css ***!
+  \***************************************************************************************************************************************************************************************************************************************************************************************/
+.Button_button__fOysu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.95rem;
+}
+
+.Button_icon__wZaBd {
+  display: inline-flex;
+}
+
+.Button_primary__9efKd {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.Button_primary__9efKd:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.Button_secondary__GMCWm {
+  background: var(--gradient-secondary);
+  color: white;
+}
+
+.Button_outline__hqd75 {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.Button_outline__hqd75:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.Button_ghost__HhDeZ {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.Button_ghost__HhDeZ:hover {
+  color: var(--primary-color);
+}
+
+
+/*!*************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./src/app/components/common/Card.module.css ***!
+  \*************************************************************************************************************************************************************************************************************************************************************************************/
+.Card_card__RS5cy {
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.Card_header__CL7_V {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.Card_title__99xC7 {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.Card_body__GfLvT {
+  padding: 1.25rem;
+}
+
+
+/*!*********************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./src/app/components/assets/AssetFilters.module.css ***!
+  \*********************************************************************************************************************************************************************************************************************************************************************************************/
+.AssetFilters_grid__h4y03 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-gap: 1rem;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.AssetFilters_label__KBW64 {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0 0 0.5rem;
+}
+
+.AssetFilters_chips__5Ceaa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.AssetFilters_sort__YJWEt {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+
+/*!******************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./src/app/components/assets/AssetCard.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************/
+.AssetCard_card__6Tt42 {
+  padding: 0;
+  overflow: hidden;
+}
+
+.AssetCard_imageWrapper__2Vmhr {
+  height: 180px;
+  position: relative;
+}
+
+.AssetCard_imageWrapper__2Vmhr img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.AssetCard_badge__fAYEK {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: var(--gradient-primary);
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.AssetCard_body__x1sLx {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.AssetCard_header__JZzLC {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.AssetCard_header__JZzLC h3 {
+  margin: 0;
+}
+
+.AssetCard_header__JZzLC p {
+  margin: 0.15rem 0 0;
+  color: #94a3b8;
+}
+
+.AssetCard_stats__12Gm5 {
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.AssetCard_stats__12Gm5 span {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.AssetCard_stats__12Gm5 strong {
+  display: block;
+  font-size: 1.1rem;
+}
+
+.AssetCard_desc__95N0y {
+  color: #64748b;
+  margin: 0;
+}
+
+.AssetCard_actions__H7hjK {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+
+/*!******************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./src/app/components/assets/AssetGrid.module.css ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************/
+.AssetGrid_grid__da0_h {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-gap: 1.5rem;
+  gap: 1.5rem;
+}
+
+
+/*!**************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./src/app/components/common/Modal.module.css ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************/
+.Modal_overlay__lECHH {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.Modal_modal__puU7e {
+  width: min(480px, 94vw);
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
+  animation: Modal_fadeIn__G3TgT 0.2s ease;
+}
+
+.Modal_header__34rka {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+}
+
+.Modal_body__06Bjo {
+  padding: 1.25rem;
+}
+
+@keyframes Modal_fadeIn__G3TgT {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+

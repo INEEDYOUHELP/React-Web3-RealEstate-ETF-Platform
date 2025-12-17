@@ -1,6 +1,23 @@
+'use client';
+
 import Breadcrumb from '../components/layout/Breadcrumb';
+import { usePortfolio } from '../../hooks/usePortfolio';
+import PortfolioSummary from '../components/portfolio/PortfolioSummary';
+import PortfolioChart from '../components/portfolio/PortfolioChart';
+import AllocationChart from '../components/portfolio/AllocationChart';
+import HoldingsList from '../components/portfolio/HoldingsList';
+import TransactionHistory from '../components/portfolio/TransactionHistory';
 
 export default function PortfolioPage() {
+  const { summary, holdings, transactions, period, setPeriod } = usePortfolio();
+
+  const allocations = [
+    { label: '北美', value: 42 },
+    { label: '欧洲', value: 28 },
+    { label: '亚太', value: 22 },
+    { label: '中东', value: 8 },
+  ];
+
   return (
     <>
       <section className="page-hero portfolio-hero">
@@ -19,8 +36,17 @@ export default function PortfolioPage() {
           </div>
         </div>
       </section>
-      <div className="container" style={{ padding: '3rem 1rem' }}>
-        <p>投资组合页面内容正在开发中...</p>
+
+      <div className="container" style={{ padding: '3rem 0', display: 'grid', gap: '2rem' }}>
+        <PortfolioSummary summary={summary} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <PortfolioChart period={period} onPeriodChange={setPeriod} />
+          <AllocationChart allocations={allocations} />
+        </div>
+
+        <HoldingsList holdings={holdings} />
+        <TransactionHistory transactions={transactions} />
       </div>
     </>
   );

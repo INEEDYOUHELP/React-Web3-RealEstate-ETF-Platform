@@ -1,0 +1,22 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.label {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin: 0.4rem 0 0;
+}
+
+.accent {
+  composes: value;
+  color: #10b981;
+}
+
