@@ -26,6 +26,7 @@ export default function Navbar() {
     { href: '/trading', label: '交易中心' },
     { href: '/analytics', label: '数据分析' },
     { href: '/about', label: '关于我们' },
+    { href: '/roles', label: '角色中心' },
   ];
 
   const isActive = (href: string) => {

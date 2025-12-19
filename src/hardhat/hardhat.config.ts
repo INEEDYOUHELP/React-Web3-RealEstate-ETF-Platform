@@ -10,6 +10,11 @@ const config: HardhatUserConfig = {
   networks: {
     // 本地 Hardhat 网络（默认）
     hardhat: {},
+
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      chainId: 31337,
+    },
     
     // Sepolia 测试网
     sepolia: {
