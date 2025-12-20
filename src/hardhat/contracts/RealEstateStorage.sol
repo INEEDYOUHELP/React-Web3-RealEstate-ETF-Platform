@@ -10,6 +10,7 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
     struct Property {
         string name;        // 房产名称或产品名称
         string location;    // 位置/描述
+        string metadataURI; // IPFS 元数据 URI（包含图片、详细描述等）
         uint256 tokenId;    // 在 MyToken 中对应的 ERC1155 id
         address publisher;  // 发布者地址
         uint256 totalSupply;// 当前已发行总份额
@@ -45,6 +46,7 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
     function createProperty(
         string memory name,
         string memory location,
+        string memory metadataURI,
         address publisher,
         uint256 maxSupply
     ) external onlyManager returns (uint256 propertyId) {
@@ -53,6 +55,7 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
         _properties[propertyId] = Property({
             name: name,
             location: location,
+            metadataURI: metadataURI,
             tokenId: propertyId, // 约定：tokenId == propertyId，便于管理
             publisher: publisher,
             totalSupply: 0,

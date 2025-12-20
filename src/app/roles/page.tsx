@@ -1,11 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useAccount, useChainId, useReadContract, useWriteContract } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { keccak256, toBytes } from 'viem';
 import Breadcrumb from '../components/layout/Breadcrumb';
 import { contracts, SupportedNetwork } from '../../contracts/addresses';
 import { myTokenAbi, realEstateLogicAbi } from '../../contracts/abis';
+import { useIPFS } from '../../hooks/useIPFS';
+import type { PropertyMetadataInput } from '../../services/ipfs/metadata';
+import { REGIONS, PROPERTY_TYPES, type Region, type PropertyType } from '../../constants/assets';
 
 function useNetworkAddresses() {
   const chainId = useChainId();
@@ -29,6 +32,27 @@ export default function RolesCenterPage() {
   const { writeContractAsync, isPending } = useWriteContract();
   const [publisherToAdd, setPublisherToAdd] = useState('');
   const [txStatus, setTxStatus] = useState<string | null>(null);
+  
+  // 创建房产相关状态
+  const [isFormExpanded, setIsFormExpanded] = useState(false);
+  const [propertyForm, setPropertyForm] = useState({
+    name: '',
+    description: '',
+    location: '',
+    type: '' as PropertyType | '',
+    region: '' as Region | '',
+    price: '', // 总市值（可选，向后兼容）
+    unitPrice: '', // 单价（每个份额的价格，推荐）
+    yield: '',
+    maxSupply: '',
+    imageFile: null as File | null,
+  });
+  const [createPropertyHash, setCreatePropertyHash] = useState<`0x${string}` | null>(null);
+  const { uploadMetadata, isUploading: isUploadingIPFS, error: ipfsError, clearError } = useIPFS();
+  
+  const { isLoading: isConfirmingProperty, isSuccess: isPropertyCreated } = useWaitForTransactionReceipt({
+    hash: createPropertyHash,
+  });
 
   // DEFAULT_ADMIN_ROLE 在 OpenZeppelin 中固定为 0x00，不是 keccak256("DEFAULT_ADMIN_ROLE")
   const ZERO_ROLE =
@@ -123,6 +147,92 @@ export default function RolesCenterPage() {
       setTxStatus(`交易已提交：${hash}`);
     } catch (err) {
       setTxStatus(err instanceof Error ? err.message : '交易提交失败');
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPropertyForm({ ...propertyForm, imageFile: file });
+      clearError();
+    }
+  };
+
+  const handleCreateProperty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addresses) return;
+    
+    if (!propertyForm.imageFile) {
+      setTxStatus('请选择房产图片');
+      return;
+    }
+
+    if (!propertyForm.name || !propertyForm.description || !propertyForm.location || !propertyForm.maxSupply) {
+      setTxStatus('请填写所有必填字段（名称、描述、位置、最大供应量）');
+      return;
+    }
+
+    if (!propertyForm.type || !propertyForm.region) {
+      setTxStatus('请选择类型和地区');
+      return;
+    }
+
+    try {
+      setTxStatus('正在上传元数据到 IPFS...');
+      clearError();
+
+      // 步骤 1: 上传元数据到 IPFS
+      const metadataInput: PropertyMetadataInput = {
+        name: propertyForm.name,
+        description: propertyForm.description,
+        image: propertyForm.imageFile,
+        location: propertyForm.location,
+        type: propertyForm.type,
+        region: propertyForm.region,
+        price: propertyForm.price ? Number(propertyForm.price) : undefined, // 总市值（可选）
+        unitPrice: propertyForm.unitPrice ? Number(propertyForm.unitPrice) : undefined, // 单价（推荐）
+        yield: propertyForm.yield ? Number(propertyForm.yield) : undefined,
+        totalUnits: propertyForm.maxSupply ? Number(propertyForm.maxSupply) : undefined,
+      };
+
+      const metadataURI = await uploadMetadata(metadataInput);
+      console.log('元数据已上传到 IPFS:', metadataURI);
+
+      // 步骤 2: 调用智能合约创建房产
+      setTxStatus('正在创建房产...');
+      const hash = await writeContractAsync({
+        address: addresses.realEstateLogic,
+        abi: realEstateLogicAbi,
+        functionName: 'createProperty',
+        args: [
+          propertyForm.name,
+          propertyForm.location,
+          metadataURI,
+          BigInt(propertyForm.maxSupply),
+        ],
+      });
+
+      setCreatePropertyHash(hash);
+      setTxStatus(`交易已提交：${hash}`);
+      
+      // 重置表单并折叠
+      setPropertyForm({
+        name: '',
+        description: '',
+        location: '',
+        type: '' as PropertyType | '',
+        region: '' as Region | '',
+        price: '',
+        unitPrice: '',
+        yield: '',
+        maxSupply: '',
+        imageFile: null,
+      });
+      setIsFormExpanded(false);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : '创建房产失败';
+      setTxStatus(errorMsg);
+      console.error('创建房产失败:', err);
     }
   };
 
@@ -260,12 +370,335 @@ export default function RolesCenterPage() {
 
             {isPublisher && (
               <div style={cardStyle}>
-                <h3 style={{ marginTop: 0 }}>发布者专区</h3>
-                <p style={{ margin: 0, color: '#475569' }}>
-                  你拥有 Publisher 角色，可创建房产并铸造份额。后续可在此衔接
-                  <strong> createProperty / mintShares </strong>
-                  的交互，或跳转到交易中心管理相关资产。
-                </p>
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    padding: '4px 0',
+                    transition: 'opacity 0.2s',
+                  }}
+                  onClick={() => setIsFormExpanded(!isFormExpanded)}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>发布者专区</span>
+                      <span style={{
+                        fontSize: '16px',
+                        color: '#64748b',
+                        fontWeight: 'normal',
+                        transition: 'transform 0.2s',
+                        transform: isFormExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        display: 'inline-block',
+                      }}>
+                        ▶
+                      </span>
+                    </h3>
+                    <p style={{ margin: '6px 0 0', color: '#475569', fontSize: '14px' }}>
+                      {isFormExpanded ? '点击收起表单' : '点击展开创建新房产表单，上传元数据到 IPFS'}
+                    </p>
+                  </div>
+                  <span style={{
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    background: 'rgba(59,130,246,0.12)',
+                    color: '#1d4ed8',
+                    fontSize: '13px',
+                    border: '1px solid rgba(59,130,246,0.4)',
+                  }}>
+                    仅发布者可见
+                  </span>
+                </div>
+
+                {isFormExpanded && (
+                  <form 
+                    onSubmit={handleCreateProperty} 
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '16px',
+                      marginTop: '20px',
+                      paddingTop: '20px',
+                      borderTop: '1px solid #e2e8f0',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                        房产名称 *
+                      </label>
+                      <input
+                        type="text"
+                        value={propertyForm.name}
+                        onChange={(e) => setPropertyForm({ ...propertyForm, name: e.target.value })}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '14px',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                        位置 *
+                      </label>
+                      <input
+                        type="text"
+                        value={propertyForm.location}
+                        onChange={(e) => setPropertyForm({ ...propertyForm, location: e.target.value })}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '14px',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                      描述 *
+                    </label>
+                    <textarea
+                      value={propertyForm.description}
+                      onChange={(e) => setPropertyForm({ ...propertyForm, description: e.target.value })}
+                      required
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px',
+                        resize: 'vertical',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                        类型 *
+                      </label>
+                      <select
+                        value={propertyForm.type}
+                        onChange={(e) => setPropertyForm({ ...propertyForm, type: e.target.value as PropertyType | '' })}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '14px',
+                          background: '#fff',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">请选择类型</option>
+                        {PROPERTY_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                        地区 *
+                      </label>
+                      <select
+                        value={propertyForm.region}
+                        onChange={(e) => setPropertyForm({ ...propertyForm, region: e.target.value as Region | '' })}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '14px',
+                          background: '#fff',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">请选择地区</option>
+                        {REGIONS.map((region) => (
+                          <option key={region} value={region}>
+                            {region}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                        最大供应量 *
+                      </label>
+                      <input
+                        type="number"
+                        value={propertyForm.maxSupply}
+                        onChange={(e) => setPropertyForm({ ...propertyForm, maxSupply: e.target.value })}
+                        required
+                        min="1"
+                        placeholder="如：10000"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '14px',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                        单价 (USD) <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal' }}>推荐</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={propertyForm.unitPrice}
+                        onChange={(e) => setPropertyForm({ ...propertyForm, unitPrice: e.target.value })}
+                        placeholder="每个份额的价格，如：10000"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '14px',
+                        }}
+                      />
+                      <small style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                        市值将自动计算：单价 × 最大供应量
+                      </small>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                        年化收益率 (%)
+                      </label>
+                      <input
+                        type="number"
+                        value={propertyForm.yield}
+                        onChange={(e) => setPropertyForm({ ...propertyForm, yield: e.target.value })}
+                        placeholder="如：8.5"
+                        step="0.1"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '14px',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
+                      房产图片 * <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal' }}>(将自动上传到 IPFS)</span>
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    {propertyForm.imageFile && (
+                      <div style={{ marginTop: '10px' }}>
+                        <img
+                          src={URL.createObjectURL(propertyForm.imageFile)}
+                          alt="预览"
+                          style={{
+                            maxWidth: '200px',
+                            maxHeight: '200px',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0',
+                            objectFit: 'cover',
+                          }}
+                        />
+                        <p style={{ marginTop: '6px', fontSize: '12px', color: '#64748b' }}>
+                          文件名: {propertyForm.imageFile.name}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {ipfsError && (
+                    <div style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      color: '#dc2626',
+                      fontSize: '14px',
+                    }}>
+                      IPFS 错误: {ipfsError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isUploadingIPFS || isPending || isConfirmingProperty}
+                    style={{
+                      padding: '12px 24px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: isPropertyCreated ? '#10b981' : '#4338ca',
+                      color: '#fff',
+                      cursor: isUploadingIPFS || isPending || isConfirmingProperty ? 'not-allowed' : 'pointer',
+                      fontSize: '15px',
+                      fontWeight: 500,
+                      opacity: isUploadingIPFS || isPending || isConfirmingProperty ? 0.7 : 1,
+                    }}
+                  >
+                    {isUploadingIPFS
+                      ? '上传元数据到 IPFS...'
+                      : isPending || isConfirmingProperty
+                      ? '处理中...'
+                      : isPropertyCreated
+                      ? '✓ 房产创建成功！'
+                      : '创建房产'}
+                  </button>
+
+                  {isPropertyCreated && createPropertyHash && (
+                    <div style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      color: '#059669',
+                      fontSize: '14px',
+                    }}>
+                      房产创建成功！交易哈希: {createPropertyHash}
+                    </div>
+                  )}
+
+                  {txStatus && !isPropertyCreated && (
+                    <p style={{ margin: 0, color: '#0f172a', fontSize: '14px' }}>{txStatus}</p>
+                  )}
+                  </form>
+                )}
               </div>
             )}
 

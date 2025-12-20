@@ -55,12 +55,14 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
 
     /// @notice 发布一个新房产/产品记录
     /// @dev 内部会在存储合约中创建记录，并返回 propertyId（同时作为 MyToken 的 tokenId）
+    /// @param metadataURI IPFS 元数据 URI，包含房产的详细信息和图片链接
     function createProperty(
         string memory name,
         string memory location,
+        string memory metadataURI,
         uint256 maxSupply
     ) external onlyRole(PUBLISHER_ROLE) returns (uint256 propertyId) {
-        propertyId = store.createProperty(name, location, msg.sender, maxSupply);
+        propertyId = store.createProperty(name, location, metadataURI, msg.sender, maxSupply);
         emit PropertyCreated(propertyId, msg.sender);
     }
 

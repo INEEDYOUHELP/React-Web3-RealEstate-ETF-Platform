@@ -22,6 +22,7 @@ export default function AssetsPage() {
     setSort,
     toggleBookmark,
     isBookmarked,
+    isLoadingChain,
   } = useAssets();
   const [selected, setSelected] = useState<Asset | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -60,6 +61,11 @@ export default function AssetsPage() {
       <div className="container" style={{ padding: '3rem 0' }}>
         <div style={{ marginBottom: '1rem', color: '#64748b', fontSize: '0.95rem' }}>
           共 {assets.length} 个匹配资产
+          {isLoadingChain && (
+            <span style={{ marginLeft: '1rem', fontSize: '0.85rem' }}>
+              (正在加载链上资产...)
+            </span>
+          )}
         </div>
         {assets.length === 0 ? (
           <p>暂无匹配资产</p>

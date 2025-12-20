@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { mockAssets } from '../data/assets';
 import { Asset } from '../types';
+import { useChainAssets } from './useChainAssets';
 
 export function useAssets() {
   const [query, setQuery] = useState('');
@@ -11,6 +12,21 @@ export function useAssets() {
   const [type, setType] = useState('全部类型');
   const [sort, setSort] = useState<'yield' | 'price'>('yield');
   const [bookmarked, setBookmarked] = useState<number[]>([]);
+
+  // 获取链上资产
+  const { chainAssets, isLoading: isLoadingChain } = useChainAssets();
+
+  // 合并假数据和链上数据
+  const allAssets = useMemo(() => {
+    const merged = [...mockAssets, ...chainAssets];
+    console.log('useAssets - Merged assets:', {
+      mockAssetsCount: mockAssets.length,
+      chainAssetsCount: chainAssets.length,
+      totalCount: merged.length,
+      chainAssets,
+    });
+    return merged;
+  }, [chainAssets]);
 
   // 查询防抖，减少频繁过滤
   useEffect(() => {
@@ -39,7 +55,7 @@ export function useAssets() {
 
   const filteredAssets = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
-    let list = mockAssets.filter((a) => {
+    let list = allAssets.filter((a) => {
       const matchQuery =
         !q ||
         a.name.toLowerCase().includes(q) ||
@@ -55,7 +71,7 @@ export function useAssets() {
       sort === 'yield' ? b.yield - a.yield : b.price - a.price,
     );
     return list;
-  }, [query, region, type, sort]);
+  }, [allAssets, debouncedQuery, region, type, sort]);
 
   const toggleBookmark = (id: number) => {
     setBookmarked((prev) =>
@@ -78,6 +94,7 @@ export function useAssets() {
     setSort,
     toggleBookmark,
     isBookmarked,
+    isLoadingChain,
   };
 }
 

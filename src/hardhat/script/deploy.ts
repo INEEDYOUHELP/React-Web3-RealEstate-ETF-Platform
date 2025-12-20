@@ -169,7 +169,7 @@ async function main() {
   console.log("   2. Use RealEstateLogic to add publishers:");
   console.log(`      await logic.addPublisher("0x...")`);
   console.log("   3. Publishers can create properties:");
-  console.log(`      await logic.createProperty("Name", "Location", maxSupply)`);
+  console.log(`      await logic.createProperty("Name", "Location", "ipfs://metadataURI", maxSupply)`);
   console.log("   4. Publishers can mint shares:");
   console.log(`      await logic.mintShares(propertyId, to, amount)`);
   

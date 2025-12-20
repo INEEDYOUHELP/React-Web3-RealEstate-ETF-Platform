@@ -64,3 +64,23 @@ export interface AnalyticsMetric {
   icon: string;
 }
 
+// IPFS 相关类型
+export interface PropertyMetadata {
+  name: string;
+  description: string;
+  image: string;
+  external_url?: string;
+  attributes?: Array<{
+    trait_type: string;
+    value: string | number;
+  }>;
+  properties?: {
+    [key: string]: any;
+  };
+}
+
+// 扩展 Asset 接口以支持 metadataURI
+export interface AssetWithMetadata extends Asset {
+  metadataURI?: string;
+}
+
