@@ -6,7 +6,15 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.27",
+  solidity: {
+    version: "0.8.27",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200, // 优化运行次数，值越大代码越小但gas消耗可能略高
+      },
+    },
+  },
   networks: {
     // 本地 Hardhat 网络（默认）
     hardhat: {},

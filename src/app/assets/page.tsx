@@ -26,9 +26,17 @@ export default function AssetsPage() {
   } = useAssets();
   const [selected, setSelected] = useState<Asset | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailMode, setDetailMode] = useState<'view' | 'invest'>('view');
 
-  const openDetail = (asset: Asset) => {
+  const handleViewDetail = (asset: Asset) => {
     setSelected(asset);
+    setDetailMode('view');
+    setDetailOpen(true);
+  };
+
+  const handleInvest = (asset: Asset) => {
+    setSelected(asset);
+    setDetailMode('invest');
     setDetailOpen(true);
   };
 
@@ -74,12 +82,18 @@ export default function AssetsPage() {
             assets={assets}
             bookmarked={isBookmarked}
             onBookmark={toggleBookmark}
-            onDetail={openDetail}
+            onDetail={handleViewDetail}
+            onInvest={handleInvest}
           />
         )}
       </div>
 
-      <AssetDetailModal asset={selected ?? undefined} open={detailOpen} onClose={() => setDetailOpen(false)} />
+      <AssetDetailModal
+        asset={selected ?? undefined}
+        open={detailOpen}
+        mode={detailMode}
+        onClose={() => setDetailOpen(false)}
+      />
     </>
   );
 }

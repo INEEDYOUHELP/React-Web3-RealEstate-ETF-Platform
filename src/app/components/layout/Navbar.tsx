@@ -22,10 +22,9 @@ export default function Navbar() {
   const navLinks = [
     { href: '/', label: '首页' },
     { href: '/assets', label: '资产展示' },
-    { href: '/portfolio', label: '投资组合' },
-    { href: '/trading', label: '交易中心' },
-    { href: '/analytics', label: '数据分析' },
-    { href: '/about', label: '关于我们' },
+    { href: '/issuance', label: '份额发行' },
+    { href: '/transfer', label: '份额转账' },
+    { href: '/distribution', label: '收益分配' },
     { href: '/roles', label: '角色中心' },
   ];
 

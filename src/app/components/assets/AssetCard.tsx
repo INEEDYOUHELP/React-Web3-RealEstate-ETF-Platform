@@ -8,9 +8,10 @@ interface Props {
   bookmarked: boolean;
   onBookmark: (id: number) => void;
   onDetail?: (asset: Asset) => void;
+  onInvest?: (asset: Asset) => void;
 }
 
-export default function AssetCard({ asset, bookmarked, onBookmark, onDetail }: Props) {
+export default function AssetCard({ asset, bookmarked, onBookmark, onDetail, onInvest }: Props) {
   return (
     <Card className={styles.card}>
       <div className={styles.imageWrapper}>
@@ -46,7 +47,7 @@ export default function AssetCard({ asset, bookmarked, onBookmark, onDetail }: P
           <Button variant="outline" onClick={() => onDetail?.(asset)}>
             查看详情
           </Button>
-          <Button>立即投资</Button>
+          <Button onClick={() => (onInvest ?? onDetail)?.(asset)}>立即投资</Button>
         </div>
       </div>
     </Card>

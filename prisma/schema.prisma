@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model PublisherApplication {
+  id                  Int       @id @default(autoincrement())
+  applicantAddress    String    @unique @db.VarChar(42)
+  applicationId       String    @unique @db.VarChar(255)
+  kycDocumentPath     String?   @db.Text
+  kycDocumentType     String?   @db.VarChar(50)
+  kycVerificationHash String?   @db.VarChar(255)
+  fullName            String?   @db.VarChar(255)
+  email               String?   @db.VarChar(255)
+  phone               String?   @db.VarChar(50)
+  companyName         String?   @db.VarChar(255)
+  businessLicense     String?   @db.VarChar(255)
+  status              String    @default("pending") @db.VarChar(20)
+  submittedAt         DateTime  @default(now())
+  reviewedAt          DateTime?
+  reviewerAddress     String?   @db.VarChar(42)
+  adminNotes          String?   @db.Text
+  rejectionReason     String?   @db.Text
+
+  @@index([applicantAddress])
+  @@index([status])
+  @@index([submittedAt])
+  @@map("publisherapplication")
+}

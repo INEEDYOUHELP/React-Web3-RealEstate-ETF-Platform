@@ -37,3 +37,5 @@ src/hardhat/typechain-types/
 .cursor/
 .cursordb
 .cursordb.*
+
+/src/generated/prisma

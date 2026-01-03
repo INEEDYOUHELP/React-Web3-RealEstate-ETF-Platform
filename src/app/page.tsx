@@ -1,11 +1,108 @@
 'use client';
 
 import Link from 'next/link';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useReadContracts } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useMemo, useState, useEffect } from 'react';
+import { formatEther } from 'viem';
+import { contracts, SupportedNetwork } from '../contracts/addresses';
+import { realEstateStorageAbi } from '../contracts/abis';
+
+// 获取所有房产的 hook（用于首页展示）
+function useAllProperties() {
+  const chainId = useChainId();
+  
+  const storageAddress = useMemo(() => {
+    const key = chainId === 31337 || chainId === 1337 ? 'localhost' : undefined;
+    return key ? contracts[key]?.realEstateStorage : undefined;
+  }, [chainId]);
+
+  const { data: nextPropertyId } = useReadContract({
+    address: storageAddress,
+    abi: realEstateStorageAbi,
+    functionName: 'nextPropertyId',
+    query: { enabled: !!storageAddress },
+  });
+
+  const propertyIds = useMemo(() => {
+    if (!nextPropertyId || nextPropertyId === BigInt(0)) return [];
+    const ids: bigint[] = [];
+    const one = BigInt(1);
+    for (let i = one; i < nextPropertyId; i++) {
+      ids.push(i);
+    }
+    return ids;
+  }, [nextPropertyId]);
+
+  const contractsConfig = useMemo(() => {
+    if (!storageAddress || propertyIds.length === 0) return [];
+    return propertyIds.map((id) => ({
+      address: storageAddress as `0x${string}`,
+      abi: realEstateStorageAbi,
+      functionName: 'getProperty' as const,
+      args: [id] as [bigint],
+    }));
+  }, [storageAddress, propertyIds]);
+
+  // @ts-ignore - 避免深度类型推断问题
+  const { data: propertiesData, isLoading } = useReadContracts({
+    contracts: contractsConfig,
+    query: { enabled: contractsConfig.length > 0 },
+  });
+
+  const properties = useMemo(() => {
+    if (!propertiesData) return [];
+
+    const allProperties: any[] = [];
+
+    propertiesData.forEach((item, index) => {
+      if (!item || item.status !== 'success') return;
+
+      const resultObj = (item as any).result;
+      if (!resultObj || resultObj.error) return;
+
+      const propertyData = resultObj.data || resultObj;
+      if (!propertyData) return;
+
+      const property = propertyData as any;
+
+      allProperties.push({
+        propertyId: propertyIds[index],
+        name: property.name,
+        location: property.location,
+        metadataURI: property.metadataURI,
+        tokenId: property.tokenId,
+        publisher: property.publisher,
+        totalSupply: property.totalSupply ? BigInt(property.totalSupply.toString()) : BigInt(0),
+        maxSupply: property.maxSupply ? BigInt(property.maxSupply.toString()) : BigInt(0),
+        active: property.active ?? true,
+        unitPriceWei: property.unitPriceWei ? BigInt(property.unitPriceWei.toString()) : BigInt(0),
+        annualYieldBps: property.annualYieldBps ? BigInt(property.annualYieldBps.toString()) : BigInt(0),
+      });
+    });
+
+    return allProperties.filter(p => p.active);
+  }, [propertiesData, propertyIds]);
+
+  return { properties, isLoading };
+}
 
 export default function HomePage() {
   const { isConnected } = useAccount();
+  const { properties, isLoading: isLoadingProperties } = useAllProperties();
+  
+  // 计算统计数据
+  const stats = useMemo(() => {
+    const totalProperties = properties.length;
+    const activeProperties = properties.filter(p => p.active).length;
+    const totalSupply = properties.reduce((sum, p) => sum + (p.totalSupply || BigInt(0)), BigInt(0));
+    
+    return {
+      totalProperties,
+      activeProperties,
+      totalSupply: formatEther(totalSupply),
+    };
+  }, [properties]);
 
   return (
     <>
@@ -25,16 +122,22 @@ export default function HomePage() {
             </p>
             <div className="hero-stats">
               <div className="stat-item">
-                <div className="stat-number">$2.5B+</div>
-                <div className="stat-label">总资产价值</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-number">15K+</div>
-                <div className="stat-label">活跃用户</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-number">500+</div>
+                <div className="stat-number">
+                  {isLoadingProperties ? '...' : stats.totalProperties}
+                </div>
                 <div className="stat-label">房产项目</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-number">
+                  {isLoadingProperties ? '...' : stats.activeProperties}
+                </div>
+                <div className="stat-label">活跃项目</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-number">
+                  {isLoadingProperties ? '...' : `${parseFloat(stats.totalSupply).toFixed(0)}`}
+                </div>
+                <div className="stat-label">已发行份额</div>
               </div>
             </div>
             <div className="hero-buttons">
@@ -86,7 +189,7 @@ export default function HomePage() {
                   }}
                 </ConnectButton.Custom>
               )}
-              <Link href="/about" className="btn btn-secondary">
+              <Link href="/assets" className="btn btn-secondary">
                 <i className="fas fa-play"></i>
                 了解更多
               </Link>
@@ -100,16 +203,16 @@ export default function HomePage() {
               </div>
               <div className="card-content">
                 <div className="data-row">
-                  <span>总市值</span>
-                  <span className="value">$2,547,890,123</span>
+                  <span>房产项目</span>
+                  <span className="value">{isLoadingProperties ? '...' : stats.totalProperties}</span>
                 </div>
                 <div className="data-row">
-                  <span>24h交易量</span>
-                  <span className="value">$89,456,789</span>
+                  <span>活跃项目</span>
+                  <span className="value">{isLoadingProperties ? '...' : stats.activeProperties}</span>
                 </div>
                 <div className="data-row">
-                  <span>活跃ETF</span>
-                  <span className="value">156</span>
+                  <span>已发行份额</span>
+                  <span className="value">{isLoadingProperties ? '...' : parseFloat(stats.totalSupply).toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -127,31 +230,43 @@ export default function HomePage() {
           <div className="features-grid">
             <div className="feature-card">
               <div className="feature-icon">
-                <i className="fas fa-globe"></i>
+                <i className="fas fa-building"></i>
               </div>
-              <h3>全球资产</h3>
-              <p>覆盖全球主要城市的优质房地产资产，多样化投资选择</p>
+              <h3>份额发行</h3>
+              <p>发布者可以创建房产ETF并铸造份额，支持ERC1155标准代币化</p>
+              <Link href="/issuance" className="feature-link">
+                了解详情 <i className="fas fa-arrow-right"></i>
+              </Link>
             </div>
             <div className="feature-card">
               <div className="feature-icon">
-                <i className="fas fa-shield-alt"></i>
+                <i className="fas fa-chart-line"></i>
               </div>
-              <h3>安全透明</h3>
-              <p>基于区块链技术，所有交易记录公开透明，资产安全可靠</p>
+              <h3>收益分配</h3>
+              <p>发布者充值收益，投资者按份额比例提取收益，透明可追溯</p>
+              <Link href="/distribution" className="feature-link">
+                了解详情 <i className="fas fa-arrow-right"></i>
+              </Link>
             </div>
             <div className="feature-card">
               <div className="feature-icon">
-                <i className="fas fa-chart-pie"></i>
+                <i className="fas fa-exchange-alt"></i>
               </div>
-              <h3>智能组合</h3>
-              <p>AI驱动的投资组合推荐，个性化资产配置策略</p>
+              <h3>份额转账</h3>
+              <p>支持ERC1155份额在用户间自由转账，灵活管理投资组合</p>
+              <Link href="/transfer" className="feature-link">
+                了解详情 <i className="fas fa-arrow-right"></i>
+              </Link>
             </div>
             <div className="feature-card">
               <div className="feature-icon">
-                <i className="fas fa-bolt"></i>
+                <i className="fas fa-user-check"></i>
               </div>
-              <h3>实时交易</h3>
-              <p>7x24小时实时交易，秒级确认，流动性极佳</p>
+              <h3>发布者认证</h3>
+              <p>申请成为发布者，通过KYC认证后即可创建和管理房产ETF</p>
+              <Link href="/issuance" className="feature-link">
+                了解详情 <i className="fas fa-arrow-right"></i>
+              </Link>
             </div>
           </div>
         </div>
@@ -162,88 +277,79 @@ export default function HomePage() {
         <div className="container">
           <div className="section-header">
             <h2>热门资产</h2>
-            <p>当前最受欢迎的房地产ETF资产</p>
+            <p>当前平台上的房地产ETF资产</p>
           </div>
-          <div className="assets-grid">
-            <div className="asset-card">
-              <div className="asset-image">
-                <img
-                  src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
-                  alt="纽约曼哈顿"
-                />
-                <div className="asset-badge">热门</div>
-              </div>
-              <div className="asset-info">
-                <h3>纽约曼哈顿商业区</h3>
-                <p className="asset-location">美国 · 纽约</p>
-                <div className="asset-stats">
-                  <div className="stat">
-                    <span className="label">年化收益</span>
-                    <span className="value positive">+8.5%</span>
-                  </div>
-                  <div className="stat">
-                    <span className="label">市值</span>
-                    <span className="value">$125M</span>
-                  </div>
-                </div>
-                <Link href="/assets" className="btn btn-outline">
-                  查看详情
-                </Link>
-              </div>
+          {isLoadingProperties ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+              <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', marginBottom: '1rem' }}></i>
+              <p>加载中...</p>
             </div>
-            <div className="asset-card">
-              <div className="asset-image">
-                <img
-                  src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400"
-                  alt="伦敦金融城"
-                />
-                <div className="asset-badge">推荐</div>
-              </div>
-              <div className="asset-info">
-                <h3>伦敦金融城办公区</h3>
-                <p className="asset-location">英国 · 伦敦</p>
-                <div className="asset-stats">
-                  <div className="stat">
-                    <span className="label">年化收益</span>
-                    <span className="value positive">+7.2%</span>
-                  </div>
-                  <div className="stat">
-                    <span className="label">市值</span>
-                    <span className="value">$98M</span>
-                  </div>
-                </div>
-                <Link href="/assets" className="btn btn-outline">
-                  查看详情
-                </Link>
-              </div>
+          ) : properties.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+              <i className="fas fa-building" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
+              <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>暂无房产项目</p>
+              <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>发布者可以创建新的房产ETF项目</p>
+              <Link href="/issuance" className="btn btn-primary">
+                <i className="fas fa-plus"></i>
+                创建房产项目
+              </Link>
             </div>
-            <div className="asset-card">
-              <div className="asset-image">
-                <img
-                  src="https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=400"
-                  alt="东京银座"
-                />
-                <div className="asset-badge">新上线</div>
-              </div>
-              <div className="asset-info">
-                <h3>东京银座商业区</h3>
-                <p className="asset-location">日本 · 东京</p>
-                <div className="asset-stats">
-                  <div className="stat">
-                    <span className="label">年化收益</span>
-                    <span className="value positive">+6.8%</span>
+          ) : (
+            <div className="assets-grid">
+              {properties.slice(0, 3).map((property, index) => {
+                const yieldPercent = property.annualYieldBps 
+                  ? (Number(property.annualYieldBps) / 100).toFixed(2)
+                  : '0.00';
+                const totalSupply = property.totalSupply || BigInt(0);
+                const maxSupply = property.maxSupply || BigInt(0);
+                
+                return (
+                  <div key={Number(property.propertyId)} className="asset-card">
+                    <div className="asset-image">
+                      <div style={{
+                        width: '100%',
+                        height: '200px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '3rem',
+                      }}>
+                        <i className="fas fa-building"></i>
+                      </div>
+                      {index === 0 && <div className="asset-badge">最新</div>}
+                    </div>
+                    <div className="asset-info">
+                      <h3>{property.name || `房产 #${Number(property.propertyId)}`}</h3>
+                      <p className="asset-location">{property.location || '位置未设置'}</p>
+                      <div className="asset-stats">
+                        <div className="stat">
+                          <span className="label">年化收益</span>
+                          <span className="value positive">+{yieldPercent}%</span>
+                        </div>
+                        <div className="stat">
+                          <span className="label">已发行</span>
+                          <span className="value">{totalSupply.toString()} / {maxSupply.toString() === '0' ? '∞' : maxSupply.toString()}</span>
+                        </div>
+                      </div>
+                      <Link href="/assets" className="btn btn-outline">
+                        查看详情
+                      </Link>
+                    </div>
                   </div>
-                  <div className="stat">
-                    <span className="label">市值</span>
-                    <span className="value">$87M</span>
-                  </div>
-                </div>
-                <Link href="/assets" className="btn btn-outline">
-                  查看详情
-                </Link>
-              </div>
+                );
+              })}
             </div>
-          </div>
+          )}
+          {properties.length > 3 && (
+            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+              <Link href="/assets" className="btn btn-primary">
+                查看所有资产
+                <i className="fas fa-arrow-right" style={{ marginLeft: '0.5rem' }}></i>
+              </Link>
+            </div>
+          )}
         </div>
       </section>
     </>

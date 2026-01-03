@@ -32,9 +32,9 @@ export default function Footer() {
             <h4>产品</h4>
             <ul>
               <li><Link href="/assets">资产展示</Link></li>
-              <li><Link href="/portfolio">投资组合</Link></li>
-              <li><Link href="/trading">交易中心</Link></li>
-              <li><Link href="/analytics">数据分析</Link></li>
+              <li><Link href="/issuance">份额发行</Link></li>
+              <li><Link href="/transfer">份额转账</Link></li>
+              <li><Link href="/distribution">收益分配</Link></li>
             </ul>
           </div>
           

@@ -16,6 +16,9 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
         uint256 totalSupply;// 当前已发行总份额
         uint256 maxSupply;  // 最大发行量（0 表示不限）
         bool active;        // 是否有效
+        uint256 unitPriceWei; // 单价（wei 单位，便于精确计算）
+        uint256 annualYieldBps; // 年化收益率（基点，10000 = 100%，例如 850 = 8.5%）
+        uint256 lastYieldTimestamp; // 上次分配收益的时间戳（0 表示未分配过）
     }
 
     /// @notice 下一个可用的 propertyId，从 1 开始自增
@@ -60,7 +63,10 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
             publisher: publisher,
             totalSupply: 0,
             maxSupply: maxSupply,
-            active: true
+            active: true,
+            unitPriceWei: 0, // 初始为 0，需要后续设置
+            annualYieldBps: 0, // 初始为 0，需要后续设置
+            lastYieldTimestamp: 0 // 初始为 0，表示未分配过
         });
     }
 
@@ -81,6 +87,29 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
     /// @notice 只读：获取房产详情
     function getProperty(uint256 propertyId) external view returns (Property memory) {
         return _properties[propertyId];
+    }
+
+    /// @notice 更新房产的单价（仅 manager）
+    function setUnitPrice(uint256 propertyId, uint256 unitPriceWei) external onlyManager {
+        Property storage p = _properties[propertyId];
+        require(p.publisher != address(0), "RealEstateStorage: property not found");
+        p.unitPriceWei = unitPriceWei;
+    }
+
+    /// @notice 更新房产的年化收益率（仅 manager）
+    /// @param annualYieldBps 年化收益率（基点），例如 850 表示 8.5%
+    function setAnnualYield(uint256 propertyId, uint256 annualYieldBps) external onlyManager {
+        Property storage p = _properties[propertyId];
+        require(p.publisher != address(0), "RealEstateStorage: property not found");
+        require(annualYieldBps <= 10000, "RealEstateStorage: yield exceeds 100%");
+        p.annualYieldBps = annualYieldBps;
+    }
+
+    /// @notice 更新上次收益分配时间戳（仅 manager，用于收益分配逻辑）
+    function setLastYieldTimestamp(uint256 propertyId, uint256 timestamp) external onlyManager {
+        Property storage p = _properties[propertyId];
+        require(p.publisher != address(0), "RealEstateStorage: property not found");
+        p.lastYieldTimestamp = timestamp;
     }
 }
 

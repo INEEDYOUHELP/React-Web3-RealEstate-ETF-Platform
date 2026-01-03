@@ -1,14 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { keccak256, toBytes } from 'viem';
+import { useMemo, useState, useEffect } from 'react';
+import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from 'wagmi';
+import { keccak256, toBytes, isAddress } from 'viem';
 import Breadcrumb from '../components/layout/Breadcrumb';
 import { contracts, SupportedNetwork } from '../../contracts/addresses';
 import { myTokenAbi, realEstateLogicAbi } from '../../contracts/abis';
-import { useIPFS } from '../../hooks/useIPFS';
-import type { PropertyMetadataInput } from '../../services/ipfs/metadata';
-import { REGIONS, PROPERTY_TYPES, type Region, type PropertyType } from '../../constants/assets';
 
 function useNetworkAddresses() {
   const chainId = useChainId();
@@ -33,26 +30,10 @@ export default function RolesCenterPage() {
   const [publisherToAdd, setPublisherToAdd] = useState('');
   const [txStatus, setTxStatus] = useState<string | null>(null);
   
-  // 创建房产相关状态
-  const [isFormExpanded, setIsFormExpanded] = useState(false);
-  const [propertyForm, setPropertyForm] = useState({
-    name: '',
-    description: '',
-    location: '',
-    type: '' as PropertyType | '',
-    region: '' as Region | '',
-    price: '', // 总市值（可选，向后兼容）
-    unitPrice: '', // 单价（每个份额的价格，推荐）
-    yield: '',
-    maxSupply: '',
-    imageFile: null as File | null,
-  });
-  const [createPropertyHash, setCreatePropertyHash] = useState<`0x${string}` | null>(null);
-  const { uploadMetadata, isUploading: isUploadingIPFS, error: ipfsError, clearError } = useIPFS();
-  
-  const { isLoading: isConfirmingProperty, isSuccess: isPropertyCreated } = useWaitForTransactionReceipt({
-    hash: createPropertyHash,
-  });
+  // 申请审核相关状态
+  const [pendingApplications, setPendingApplications] = useState<any[]>([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<Record<string, string>>({});
 
   // DEFAULT_ADMIN_ROLE 在 OpenZeppelin 中固定为 0x00，不是 keccak256("DEFAULT_ADMIN_ROLE")
   const ZERO_ROLE =
@@ -145,96 +126,120 @@ export default function RolesCenterPage() {
         args: [publisherToAdd as `0x${string}`],
       });
       setTxStatus(`交易已提交：${hash}`);
+      setPublisherToAdd('');
     } catch (err) {
       setTxStatus(err instanceof Error ? err.message : '交易提交失败');
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPropertyForm({ ...propertyForm, imageFile: file });
-      clearError();
+  // 获取待审核申请
+  useEffect(() => {
+    if (isLogicAdminEffective && addresses) {
+      fetchPendingApplications();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLogicAdminEffective, addresses]);
+
+  const fetchPendingApplications = async () => {
+    setIsLoadingApplications(true);
+    try {
+      // 从数据库获取待审核申请
+      const response = await fetch('/api/kyc/applications?status=pending');
+      const data = await response.json();
+      setPendingApplications(data.applications || []);
+    } catch (error) {
+      console.error('Failed to fetch applications:', error);
+      setPendingApplications([]);
+    } finally {
+      setIsLoadingApplications(false);
     }
   };
 
-  const handleCreateProperty = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addresses) return;
-    
-    if (!propertyForm.imageFile) {
-      setTxStatus('请选择房产图片');
+  // 处理审核申请
+  const handleReviewApplication = async (applicantAddress: string, approved: boolean, rejectionReason?: string) => {
+    if (!addresses || !address) {
+      setReviewStatus(prev => ({ ...prev, [applicantAddress]: '请先连接钱包' }));
       return;
     }
 
-    if (!propertyForm.name || !propertyForm.description || !propertyForm.location || !propertyForm.maxSupply) {
-      setTxStatus('请填写所有必填字段（名称、描述、位置、最大供应量）');
+    // 检查管理员权限
+    if (!isLogicAdminEffective) {
+      setReviewStatus(prev => ({ ...prev, [applicantAddress]: '错误: 您没有管理员权限' }));
       return;
     }
 
-    if (!propertyForm.type || !propertyForm.region) {
-      setTxStatus('请选择类型和地区');
-      return;
-    }
+    setReviewStatus(prev => ({ ...prev, [applicantAddress]: '检查申请状态...' }));
 
     try {
-      setTxStatus('正在上传元数据到 IPFS...');
-      clearError();
+      setReviewStatus(prev => ({ ...prev, [applicantAddress]: '提交链上交易...' }));
 
-      // 步骤 1: 上传元数据到 IPFS
-      const metadataInput: PropertyMetadataInput = {
-        name: propertyForm.name,
-        description: propertyForm.description,
-        image: propertyForm.imageFile,
-        location: propertyForm.location,
-        type: propertyForm.type,
-        region: propertyForm.region,
-        price: propertyForm.price ? Number(propertyForm.price) : undefined, // 总市值（可选）
-        unitPrice: propertyForm.unitPrice ? Number(propertyForm.unitPrice) : undefined, // 单价（推荐）
-        yield: propertyForm.yield ? Number(propertyForm.yield) : undefined,
-        totalUnits: propertyForm.maxSupply ? Number(propertyForm.maxSupply) : undefined,
-      };
-
-      const metadataURI = await uploadMetadata(metadataInput);
-      console.log('元数据已上传到 IPFS:', metadataURI);
-
-      // 步骤 2: 调用智能合约创建房产
-      setTxStatus('正在创建房产...');
+      // 1. 调用链上合约审核
       const hash = await writeContractAsync({
         address: addresses.realEstateLogic,
         abi: realEstateLogicAbi,
-        functionName: 'createProperty',
-        args: [
-          propertyForm.name,
-          propertyForm.location,
-          metadataURI,
-          BigInt(propertyForm.maxSupply),
-        ],
+        functionName: 'reviewPublisherApplication',
+        args: [applicantAddress as `0x${string}`, approved],
       });
 
-      setCreatePropertyHash(hash);
-      setTxStatus(`交易已提交：${hash}`);
+      setReviewStatus(prev => ({ ...prev, [applicantAddress]: `交易已提交，等待确认... ${hash.slice(0, 10)}...` }));
+
+      // 2. 更新数据库状态
+      try {
+        await fetch(`/api/kyc/applications/${applicantAddress}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: approved ? 'approved' : 'rejected',
+            reviewerAddress: address,
+            rejectionReason: rejectionReason || null,
+          }),
+        });
+      } catch (dbError) {
+        console.error('Failed to update database:', dbError);
+        // 数据库更新失败不影响链上操作，只记录错误
+      }
+
+      setReviewStatus(prev => ({ ...prev, [applicantAddress]: approved ? '✅ 已通过' : '❌ 已拒绝' }));
       
-      // 重置表单并折叠
-      setPropertyForm({
-        name: '',
-        description: '',
-        location: '',
-        type: '' as PropertyType | '',
-        region: '' as Region | '',
-        price: '',
-        unitPrice: '',
-        yield: '',
-        maxSupply: '',
-        imageFile: null,
-      });
-      setIsFormExpanded(false);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '创建房产失败';
-      setTxStatus(errorMsg);
-      console.error('创建房产失败:', err);
+      // 刷新列表
+      setTimeout(() => {
+        fetchPendingApplications();
+        setReviewStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[applicantAddress];
+          return newStatus;
+        });
+      }, 2000);
+    } catch (error: any) {
+      console.error('Review failed:', error);
+      
+      // 解析错误信息
+      let errorMsg = '审核失败';
+      if (error instanceof Error) {
+        errorMsg = error.message;
+        
+        // 检查是否是合约 revert 错误
+        if (errorMsg.includes('reverted') || errorMsg.includes('JSON-RPC')) {
+          if (errorMsg.includes('AccessControl') || errorMsg.includes('role')) {
+            errorMsg = '权限不足：您没有管理员权限（ADMIN_ROLE）';
+          } else if (errorMsg.includes('invalid application status')) {
+            errorMsg = '申请状态无效：申请可能已被处理或不存在';
+          } else if (errorMsg.includes('application not found')) {
+            errorMsg = '申请不存在：链上未找到该申请';
+          } else {
+            errorMsg = '合约执行失败，可能原因：1) 权限不足 2) 申请状态不正确 3) 申请不存在';
+          }
+        } else if (errorMsg.includes('User rejected')) {
+          errorMsg = '交易被用户取消';
+        } else if (errorMsg.includes('insufficient funds')) {
+          errorMsg = 'Gas 不足，请确保账户有足够的 ETH';
+        }
+      }
+      
+      setReviewStatus(prev => ({ ...prev, [applicantAddress]: `错误: ${errorMsg}` }));
     }
   };
+
 
   const renderBadge = (label: string, active?: boolean) => (
     <span
@@ -368,339 +373,158 @@ export default function RolesCenterPage() {
               </div>
             )}
 
-            {isPublisher && (
+            {/* 待审核申请列表 */}
+            {isLogicAdminEffective && (
               <div style={cardStyle}>
-                <div 
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    padding: '4px 0',
-                    transition: 'opacity 0.2s',
-                  }}
-                  onClick={() => setIsFormExpanded(!isFormExpanded)}
-                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-                >
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>发布者专区</span>
-                      <span style={{
-                        fontSize: '16px',
-                        color: '#64748b',
-                        fontWeight: 'normal',
-                        transition: 'transform 0.2s',
-                        transform: isFormExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                        display: 'inline-block',
-                      }}>
-                        ▶
-                      </span>
-                    </h3>
-                    <p style={{ margin: '6px 0 0', color: '#475569', fontSize: '14px' }}>
-                      {isFormExpanded ? '点击收起表单' : '点击展开创建新房产表单，上传元数据到 IPFS'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>待审核申请</h3>
+                    <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                      审核用户提交的发布者申请
                     </p>
                   </div>
-                  <span style={{
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    background: 'rgba(59,130,246,0.12)',
-                    color: '#1d4ed8',
-                    fontSize: '13px',
-                    border: '1px solid rgba(59,130,246,0.4)',
-                  }}>
-                    仅发布者可见
-                  </span>
+                  <button
+                    onClick={fetchPendingApplications}
+                    disabled={isLoadingApplications}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: '#fff',
+                      cursor: isLoadingApplications ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      color: '#4338ca',
+                    }}
+                  >
+                    {isLoadingApplications ? '加载中...' : '刷新'}
+                  </button>
                 </div>
 
-                {isFormExpanded && (
-                  <form 
-                    onSubmit={handleCreateProperty} 
-                    style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '16px',
-                      marginTop: '20px',
-                      paddingTop: '20px',
-                      borderTop: '1px solid #e2e8f0',
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                        房产名称 *
-                      </label>
-                      <input
-                        type="text"
-                        value={propertyForm.name}
-                        onChange={(e) => setPropertyForm({ ...propertyForm, name: e.target.value })}
-                        required
+                {isLoadingApplications ? (
+                  <p style={{ color: '#64748b', textAlign: 'center', padding: '20px' }}>加载中...</p>
+                ) : pendingApplications.length === 0 ? (
+                  <p style={{ color: '#64748b', textAlign: 'center', padding: '20px' }}>暂无待审核申请</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {pendingApplications.map((app) => (
+                      <div
+                        key={app.id}
                         style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '14px',
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                        位置 *
-                      </label>
-                      <input
-                        type="text"
-                        value={propertyForm.location}
-                        onChange={(e) => setPropertyForm({ ...propertyForm, location: e.target.value })}
-                        required
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '14px',
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                      描述 *
-                    </label>
-                    <textarea
-                      value={propertyForm.description}
-                      onChange={(e) => setPropertyForm({ ...propertyForm, description: e.target.value })}
-                      required
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '14px',
-                        resize: 'vertical',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                        类型 *
-                      </label>
-                      <select
-                        value={propertyForm.type}
-                        onChange={(e) => setPropertyForm({ ...propertyForm, type: e.target.value as PropertyType | '' })}
-                        required
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '14px',
-                          background: '#fff',
-                          cursor: 'pointer',
+                          padding: '16px',
+                          borderRadius: '10px',
+                          border: '1px solid #e2e8f0',
+                          background: '#f9fafb',
                         }}
                       >
-                        <option value="">请选择类型</option>
-                        {PROPERTY_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                              申请者: {app.applicantAddress}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {app.fullName && <div>姓名: {app.fullName}</div>}
+                              {app.email && <div>邮箱: {app.email}</div>}
+                              {app.phone && <div>电话: {app.phone}</div>}
+                              {app.companyName && <div>公司: {app.companyName}</div>}
+                              {app.submittedAt && (
+                                <div>提交时间: {new Date(app.submittedAt).toLocaleString('zh-CN')}</div>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <a
+                              href={`/api/kyc/download/${app.applicationId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                background: '#fff',
+                                color: '#4338ca',
+                                textDecoration: 'none',
+                                fontSize: '13px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              查看KYC
+                            </a>
+                          </div>
+                        </div>
 
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                        地区 *
-                      </label>
-                      <select
-                        value={propertyForm.region}
-                        onChange={(e) => setPropertyForm({ ...propertyForm, region: e.target.value as Region | '' })}
-                        required
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '14px',
-                          background: '#fff',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <option value="">请选择地区</option>
-                        {REGIONS.map((region) => (
-                          <option key={region} value={region}>
-                            {region}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                        {reviewStatus[app.applicantAddress] && (
+                          <div style={{
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            background: reviewStatus[app.applicantAddress].includes('错误')
+                              ? 'rgba(239, 68, 68, 0.1)'
+                              : 'rgba(59, 130, 246, 0.1)',
+                            color: reviewStatus[app.applicantAddress].includes('错误')
+                              ? '#dc2626'
+                              : '#1d4ed8',
+                            fontSize: '13px',
+                            marginBottom: '12px',
+                          }}>
+                            {reviewStatus[app.applicantAddress]}
+                          </div>
+                        )}
 
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                        最大供应量 *
-                      </label>
-                      <input
-                        type="number"
-                        value={propertyForm.maxSupply}
-                        onChange={(e) => setPropertyForm({ ...propertyForm, maxSupply: e.target.value })}
-                        required
-                        min="1"
-                        placeholder="如：10000"
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '14px',
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                        单价 (USD) <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal' }}>推荐</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={propertyForm.unitPrice}
-                        onChange={(e) => setPropertyForm({ ...propertyForm, unitPrice: e.target.value })}
-                        placeholder="每个份额的价格，如：10000"
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '14px',
-                        }}
-                      />
-                      <small style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                        市值将自动计算：单价 × 最大供应量
-                      </small>
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                        年化收益率 (%)
-                      </label>
-                      <input
-                        type="number"
-                        value={propertyForm.yield}
-                        onChange={(e) => setPropertyForm({ ...propertyForm, yield: e.target.value })}
-                        placeholder="如：8.5"
-                        step="0.1"
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '14px',
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                      房产图片 * <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'normal' }}>(将自动上传到 IPFS)</span>
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      required
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                      }}
-                    />
-                    {propertyForm.imageFile && (
-                      <div style={{ marginTop: '10px' }}>
-                        <img
-                          src={URL.createObjectURL(propertyForm.imageFile)}
-                          alt="预览"
-                          style={{
-                            maxWidth: '200px',
-                            maxHeight: '200px',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                            objectFit: 'cover',
-                          }}
-                        />
-                        <p style={{ marginTop: '6px', fontSize: '12px', color: '#64748b' }}>
-                          文件名: {propertyForm.imageFile.name}
-                        </p>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => handleReviewApplication(app.applicantAddress, true)}
+                            disabled={isPending || !!reviewStatus[app.applicantAddress]}
+                            style={{
+                              flex: 1,
+                              padding: '10px 16px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: isPending || reviewStatus[app.applicantAddress]
+                                ? '#9ca3af'
+                                : '#10b981',
+                              color: '#fff',
+                              cursor: isPending || reviewStatus[app.applicantAddress]
+                                ? 'not-allowed'
+                                : 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 500,
+                            }}
+                          >
+                            通过
+                          </button>
+                          <button
+                            onClick={() => {
+                              const reason = prompt('请输入拒绝原因（可选）:');
+                              if (reason !== null) {
+                                handleReviewApplication(app.applicantAddress, false, reason);
+                              }
+                            }}
+                            disabled={isPending || !!reviewStatus[app.applicantAddress]}
+                            style={{
+                              flex: 1,
+                              padding: '10px 16px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: isPending || reviewStatus[app.applicantAddress]
+                                ? '#9ca3af'
+                                : '#dc2626',
+                              color: '#fff',
+                              cursor: isPending || reviewStatus[app.applicantAddress]
+                                ? 'not-allowed'
+                                : 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 500,
+                            }}
+                          >
+                            拒绝
+                          </button>
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
-
-                  {ipfsError && (
-                    <div style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      color: '#dc2626',
-                      fontSize: '14px',
-                    }}>
-                      IPFS 错误: {ipfsError}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={isUploadingIPFS || isPending || isConfirmingProperty}
-                    style={{
-                      padding: '12px 24px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      background: isPropertyCreated ? '#10b981' : '#4338ca',
-                      color: '#fff',
-                      cursor: isUploadingIPFS || isPending || isConfirmingProperty ? 'not-allowed' : 'pointer',
-                      fontSize: '15px',
-                      fontWeight: 500,
-                      opacity: isUploadingIPFS || isPending || isConfirmingProperty ? 0.7 : 1,
-                    }}
-                  >
-                    {isUploadingIPFS
-                      ? '上传元数据到 IPFS...'
-                      : isPending || isConfirmingProperty
-                      ? '处理中...'
-                      : isPropertyCreated
-                      ? '✓ 房产创建成功！'
-                      : '创建房产'}
-                  </button>
-
-                  {isPropertyCreated && createPropertyHash && (
-                    <div style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      background: 'rgba(16, 185, 129, 0.1)',
-                      color: '#059669',
-                      fontSize: '14px',
-                    }}>
-                      房产创建成功！交易哈希: {createPropertyHash}
-                    </div>
-                  )}
-
-                  {txStatus && !isPropertyCreated && (
-                    <p style={{ margin: 0, color: '#0f172a', fontSize: '14px' }}>{txStatus}</p>
-                  )}
-                  </form>
                 )}
               </div>
             )}
+
 
             {!isLogicAdminEffective && !isPublisher && (
               <div style={cardStyle}>

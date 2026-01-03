@@ -16,6 +16,45 @@
       "static/chunks/main-app.js",
       "static/css/app/assets/page.css",
       "static/chunks/app/assets/page.js"
+    ],
+    "/issuance/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/issuance/page.css",
+      "static/chunks/app/issuance/page.js"
+    ],
+    "/api/kyc/applications/[address]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/kyc/applications/[address]/route.js"
+    ],
+    "/roles/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/roles/page.css",
+      "static/chunks/app/roles/page.js"
+    ],
+    "/api/kyc/applications/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/kyc/applications/route.js"
+    ],
+    "/api/kyc/apply/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/kyc/apply/route.js"
+    ],
+    "/distribution/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/distribution/page.css",
+      "static/chunks/app/distribution/page.js"
+    ],
+    "/transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/transfer/page.css",
+      "static/chunks/app/transfer/page.js"
     ]
   }
 }

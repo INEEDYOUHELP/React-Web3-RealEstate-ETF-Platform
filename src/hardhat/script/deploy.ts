@@ -155,6 +155,42 @@ async function main() {
   }
 
   // ============================================
+  // 步骤 6: 部署测试代币 (TestToken)
+  // ============================================
+  console.log("\n💰 Step 6: Deploying TestToken for yield distribution...");
+  
+  const TestToken = await ethers.getContractFactory("TestToken");
+  const testToken = await TestToken.deploy();
+  await testToken.deployed();
+  
+  console.log("✅ TestToken deployed!");
+  console.log("   Address:", testToken.address);
+  
+  // 获取部署者的代币余额
+  const deployerBalance = await testToken.balanceOf(deployer.address);
+  const deployerBalanceFormatted = ethers.utils.formatEther(deployerBalance);
+  console.log("   Deployer balance:", deployerBalanceFormatted, "TUSDC");
+
+  // ============================================
+  // 步骤 7: 设置收益代币地址
+  // ============================================
+  console.log("\n🔧 Step 7: Setting reward token in RealEstateLogic...");
+  
+  const setRewardTokenTx = await logic.setRewardToken(testToken.address);
+  await setRewardTokenTx.wait();
+  
+  console.log("✅ Reward token set successfully!");
+  console.log("   RealEstateLogic.rewardToken =", testToken.address);
+  
+  // 验证设置
+  const rewardTokenAddress = await logic.rewardToken();
+  if (rewardTokenAddress.toLowerCase() === testToken.address.toLowerCase()) {
+    console.log("   ✓ Verified: Reward token address matches");
+  } else {
+    console.log("   ⚠️  Warning: Reward token address mismatch!");
+  }
+
+  // ============================================
   // 部署总结
   // ============================================
   console.log("\n" + "=".repeat(60));
@@ -164,6 +200,7 @@ async function main() {
   console.log("   MyToken Proxy:        ", myToken.address);
   console.log("   RealEstateStorage:    ", storage.address);
   console.log("   RealEstateLogic:      ", logic.address);
+  console.log("   TestToken:            ", testToken.address);
   console.log("\n💡 Next Steps:");
   console.log("   1. Save these addresses to your frontend config");
   console.log("   2. Use RealEstateLogic to add publishers:");
@@ -172,6 +209,11 @@ async function main() {
   console.log(`      await logic.createProperty("Name", "Location", "ipfs://metadataURI", maxSupply)`);
   console.log("   4. Publishers can mint shares:");
   console.log(`      await logic.mintShares(propertyId, to, amount)`);
+  console.log("   5. Publishers can deposit yield:");
+  console.log(`      await testToken.approve(logic.address, amount)`);
+  console.log(`      await logic.depositYield(propertyId, amount)`);
+  console.log("   6. Share holders can claim yield:");
+  console.log(`      await logic.claimYield(propertyId)`);
   
   if (isLocalNetwork) {
     console.log("\n💡 Tip: This is a local deployment. Restart Hardhat to reset the network.");

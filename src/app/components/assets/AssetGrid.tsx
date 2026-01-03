@@ -7,9 +7,10 @@ interface Props {
   bookmarked: (id: number) => boolean;
   onBookmark: (id: number) => void;
   onDetail?: (asset: Asset) => void;
+  onInvest?: (asset: Asset) => void;
 }
 
-export default function AssetGrid({ assets, bookmarked, onBookmark, onDetail }: Props) {
+export default function AssetGrid({ assets, bookmarked, onBookmark, onDetail, onInvest }: Props) {
   return (
     <div className={styles.grid}>
       {assets.map((asset) => (
@@ -19,6 +20,7 @@ export default function AssetGrid({ assets, bookmarked, onBookmark, onDetail }: 
           bookmarked={bookmarked(asset.id)}
           onBookmark={onBookmark}
           onDetail={onDetail}
+          onInvest={onInvest}
         />
       ))}
     </div>

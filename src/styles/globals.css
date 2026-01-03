@@ -325,6 +325,28 @@ body {
 .feature-card p {
     color: var(--text-secondary);
     line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.feature-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    transition: var(--transition);
+}
+
+.feature-link:hover {
+    color: var(--primary-dark);
+    gap: 0.75rem;
+}
+
+.feature-link i {
+    font-size: 0.8rem;
 }
 
 /* 热门资产 */
