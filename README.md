@@ -7,7 +7,7 @@
 ## 📋 项目总览
 
 - **产品定位**：模拟一个去中心化的「房地产 ETF 投资平台」，提供资产浏览、数据分析、投资组合检视与交易体验。
-- **前端应用**：基于 Next.js App Router，提供多页面仪表板式界面（首页、资产展示、数据分析、投资组合、交易中心、关于页）。
+- **前端应用**：基于 Next.js App Router，提供多页面仪表板式界面（首页、资产展示、房产发行、收益分配、角色管理、转账中心）。
 - **智能合约**：`src/hardhat/contracts` 中包含：
   - `MyToken.sol`：ERC1155 型态的基础代币（可升级架构）。
   - `RealEstateStorage.sol`：房地产 ETF 相关的存储层。
@@ -23,52 +23,58 @@
 毕业项目/
 ├── src/
 │   ├── app/                         # Next.js App Router 应用
-│   │   ├── page.tsx                 # 首页（英雄区 + 热门资产介绍）
+│   │   ├── page.tsx                 # 首页（热门资产介绍）
 │   │   ├── layout.tsx               # 全局 Layout（Navbar + Footer + Providers）
-│   │   ├── about/                   # 关于平台 / 项目介绍页
 │   │   ├── assets/                  # 资产展示页（全球房地产 ETF 资产）
-│   │   ├── analytics/               # 数据分析中心
-│   │   ├── portfolio/               # 我的投资组合
-│   │   ├── trading/                 # 交易中心（模拟下单）
+│   │   ├── issuance/                # 房产发行页（创建房产、铸造份额）
+│   │   ├── distribution/             # 收益分配页（充值收益、提取收益）
+│   │   ├── roles/                   # 角色管理页（管理发布者角色）
+│   │   ├── transfer/                 # 转账中心（ERC1155 代币转账）
+│   │   ├── api/                     # API 路由
+│   │   │   └── kyc/                 # KYC 申请相关 API
 │   │   └── components/
 │   │       ├── layout/              # Navbar / Footer / Breadcrumb
 │   │       ├── wallet/              # `WalletProvider`，包装 Wagmi/RainbowKit
-│   │       ├── assets/              # 资产卡片、搜索、筛选、Modal 等组件
-│   │       ├── analytics/           # 市场概览、分析卡片、表格等 UI
-│   │       ├── portfolio/           # 组合概要、持仓列表、交易记录等组件
-│   │       └── trading/             # 交易面板、订单簿、近期成交等组件
+│   │       ├── assets/             # 资产卡片、搜索、筛选、Modal 等组件
+│   │       └── common/             # 通用组件（Button、Card、Loading、Modal、Notification）
 │   │
-│   ├── hooks/                       # 前端数据与 UI 状态 hooks（以假数据为主）
+│   ├── hooks/                       # 前端数据与 UI 状态 hooks
 │   │   ├── useAssets.ts             # 资产搜索 / 筛选 / 收藏（localStorage）
-│   │   ├── usePortfolio.ts          # 组合摘要、持仓、模拟绩效
-│   │   ├── useTrading.ts            # 交易中心状态（买卖方向、数量、估算金额等）
-│   │   └── useAnalytics.ts          # 市场概览与分析卡片数据
+│   │   ├── useChainAssets.ts        # 从链上获取资产数据
+│   │   ├── useIPFS.ts               # IPFS 元数据上传和获取
+│   │   └── usePublisherProperties.ts # 发布者房产管理
 │   │
 │   ├── data/                        # 假数据（Mock Data），支持整个前端展示
-│   │   ├── assets.ts                # 房地产资产清单
-│   │   ├── portfolio.ts             # 组合持仓、交易记录与摘要
-│   │   ├── trading.ts               # 交易中心用的 ETF 资产列表
-│   │   └── analytics.ts             # 市场与指标数据
+│   │   └── assets.ts                # 房地产资产清单（用于演示和测试）
 │   │
 │   ├── contracts/
-│   │   └── addresses.ts             # 前端使用的合约地址设置（localhost / sepolia 等）
+│   │   ├── addresses.ts             # 前端使用的合约地址设置（localhost / sepolia 等）
+│   │   └── abis.ts                  # 合约 ABI 定义（用于前端交互）
 │   │
 │   ├── hardhat/                     # Hardhat 智能合约子项目（独立 package.json）
 │   │   ├── contracts/               # Solidity 合约
-│   │   │   ├── MyToken.sol
-│   │   │   ├── RealEstateLogic.sol
-│   │   │   └── RealEstateStorage.sol
+│   │   │   ├── MyToken.sol          # ERC1155 代币合约
+│   │   │   ├── RealEstateStorage.sol # 房地产 ETF 存储层
+│   │   │   ├── RealEstateLogic.sol  # 房地产 ETF 业务逻辑层
+│   │   │   └── TestToken.sol        # 测试代币（用于收益分配）
 │   │   ├── script/
-│   │   │   └── deploy.ts            # 自定义部署脚本（部署 MyToken + ETF 结构）
-│   │   ├── hardhat.config.ts        # Hardhat 设置
-│   │   └── README.md                # Hardhat 预设说明（可视需要再补充）
+│   │   │   └── deploy.ts            # 自定义部署脚本（部署所有合约）
+│   │   └── hardhat.config.ts        # Hardhat 设置
 │   │
 │   ├── styles/
 │   │   ├── globals.css              # 全局样式
 │   │   └── components.css           # 各页与组件使用的 UI 样式
 │   │
 │   ├── types/
-│   │   └── index.ts                 # 共用 TypeScript 类型（Asset、TradingAsset 等）
+│   │   └── index.ts                 # 共用 TypeScript 类型定义
+│   ├── constants/
+│   │   └── assets.ts                # 资产相关常量（地区、类型、标签等）
+│   ├── services/
+│   │   └── ipfs/                    # IPFS/Pinata 服务集成
+│   │       ├── pinata.ts            # Pinata API 客户端
+│   │       └── metadata.ts          # 元数据处理和上传
+│   └── lib/
+│       └── db.ts                    # Prisma 数据库客户端
 │   │
 │   └── wagmi.ts                     # Wagmi + RainbowKit 网络与 config 设置
 │
@@ -82,53 +88,60 @@
 
 ### 首页（`/`）
 
-- **英雄区 / 产品介绍**：说明「房地产 ETF 资产选择平台」定位，展示总资产价值、活跃用户数、房产项目数等指标（静态示意）。
+- **产品介绍**：说明「房地产 ETF 资产选择平台」定位，展示总资产价值、活跃用户数、房产项目数等指标（静态示意）。
 - **特色模块**：以卡片形式说明「全球资产、安全透明、智能组合、即时交易」等卖点。
 - **热门资产区块**：展示数个精选房产 ETF（图片 + 城市 + 年化收益 + 市值），引导前往 `资产展示` 页面。
 - **钱包连线 CTA**：若尚未连线，显示 RainbowKit `ConnectButton`；已连线则引导前往 `/assets`。
 
 ### 资产展示（`/assets`）
 
-- 使用 `useAssets` 从 `data/assets.ts` 读取房地产资产清单，支持：
-  - 关键字搜索（名称 / 地点 / 类型 / 地区）。
-  - 地区筛选（例如：北美 / 欧洲 / 亚太等）。
-  - 类型筛选（写字楼 / 商业 / 住宅等）。
-  - 依年化收益或价格排序。
-- 资产卡片支持 **收藏功能**：使用 localStorage 储存书签（`bookmarkedAssets`）。
-- 点击资产可开启 `AssetDetailModal`，显示更完整的资产信息。
+- 使用 `useAssets` 和 `useChainAssets` 获取房地产资产清单，支持：
+  - 从链上实时获取房产数据
+  - 关键字搜索（名称 / 地点 / 类型 / 地区）
+  - 地区筛选（例如：北美 / 欧洲 / 亚太等）
+  - 类型筛选（商业地产 / 住宅地产 / 零售地产等）
+  - 依年化收益或价格排序
+- 资产卡片支持 **收藏功能**：使用 localStorage 储存书签（`bookmarkedAssets`）
+- 点击资产可开启 `AssetDetailModal`，显示更完整的资产信息（包括链上数据和 IPFS 元数据）
 
-### 数据分析中心（`/analytics`）
+### 房产发行（`/issuance`）
 
-- 使用 `useAnalytics` 提供市场概览与分析卡片数据。
-- 包含以下区块：
-  - **市场概览卡片**：总市值、成交量、活跃 ETF 数等。
-  - **分析图表区**：不同维度的市场或策略指标（由 `AnalyticsChart` 呈现）。
-  - **区域表格**：例如不同地区的表现指数（由 `DataTable` 呈现）。
+- 发布者可以创建新的房地产 ETF 资产
+- 主要功能：
+  - **创建房产**：填写房产信息（名称、描述、位置、类型、地区、价格、收益率等）
+  - **上传图片**：自动上传到 IPFS 并生成元数据
+  - **设置链上参数**：设置单价和年化收益率
+  - **铸造份额**：为指定地址铸造房产份额代币（ERC1155）
+- 使用 `useIPFS` hook 处理 IPFS 上传
+- 使用 `usePublisherProperties` hook 管理发布者的房产列表
 
-### 我的投资组合（`/portfolio`）
+### 收益分配（`/distribution`）
 
-- 使用 `usePortfolio` 聚合组合相关数据（来自 `data/portfolio.ts`）：
-  - 组合总市值、收益率等 **摘要信息**。
-  - 持仓列表（不同 ETF、持有数量、成本、现价等）。
-  - 交易历史记录（买入/卖出时间、数量、价格）。
-- 支持切换 **绩效观察区间**（7 天 / 30 天 / 90 天 / 1 年），利用简单系数模拟不同期间的资产价值变化。
-- 使用 `PortfolioChart`、`AllocationChart`、`HoldingsList`、`TransactionHistory` 做整体视觉呈现。
+- 管理房地产 ETF 的收益分配系统
+- 主要功能：
+  - **充值收益**：发布者可以向收益池充值测试代币（TUSDC）
+  - **提取收益**：持有者根据持有的份额比例提取收益
+  - **查看收益池**：实时查看收益池总额和可提取金额
+- 支持按份额比例自动计算可提取收益
+- 使用 ERC20 代币（TestToken）作为收益代币
 
-### 交易中心（`/trading`）
+### 角色管理（`/roles`）
 
-- 使用 `useTrading` 管理整个交易流程状态（选中资产、买/卖方向、金额、数量、查询字符串等）。
-- 主要区块：
-  - **资产选择（`AssetSelector`）**：在可交易的 ETF 清单中搜索并选择标的。
-  - **下单表单（`OrderForm`）**：
-    - 切换买入 / 卖出。
-    - 输入金额与数量。
-    - 显示预估成交金额（`estimatedCost`）。
-    - 目前提交动作为前端模拟（`alert` 提示），方便未来整合真实合约或 API。
-  - **订单簿 & 近期成交（`OrderBook` / `RecentTrades`）**：以假数据模拟市场深度与成交情况。
+- 管理平台角色和权限
+- 主要功能：
+  - **添加发布者**：管理员可以添加新的发布者地址
+  - **申请发布者**：用户可以通过 KYC 申请成为发布者
+  - **查看角色**：查看当前账户的角色权限
+- 支持链上角色验证和 KYC 申请流程
 
-### 关于页（`/about`）
+### 转账中心（`/transfer`）
 
-- 用于说明项目背景、设计目标与技术选择（具体内容可依你实际撰写的文案为准）。
+- ERC1155 代币转账功能
+- 主要功能：
+  - **查看持仓**：查看当前账户持有的所有房产份额
+  - **转账份额**：将房产份额代币转账给其他地址
+  - **批量查询**：支持批量查询多个房产的余额
+- 使用标准的 ERC1155 `safeTransferFrom` 函数
 
 ---
 
@@ -137,15 +150,27 @@
 ### 合约结构（位于 `src/hardhat/contracts`）
 
 - **`MyToken.sol`**
-  - 基于 ERC1155 的多代币标准，可作为房地产 ETF 单位的基础代币。
-  - 采用可升级架构（使用 OpenZeppelin Upgrades 套件）。
-  - 支持角色控制、铸造 / 销毁、暂停等功能（具体逻辑可于文件内查看）。
+  - 基于 ERC1155 的多代币标准，可作为房地产 ETF 单位的基础代币
+  - 采用可升级架构（使用 OpenZeppelin Upgrades 套件）
+  - 支持角色控制、铸造 / 销毁、暂停等功能
 
 - **`RealEstateStorage.sol`**
-  - 负责储存房地产 ETF 相关的数据结构，例如资产信息、持仓映射等（以实作为准）。
+  - 负责储存房地产 ETF 相关的数据结构
+  - 存储房产信息（名称、位置、元数据 URI、发行者、供应量等）
+  - 存储金融参数（单价、年化收益率等）
 
 - **`RealEstateLogic.sol`**
-  - 通过接口 `IMyToken` 操作 `MyToken`，实现房地产 ETF 的高层业务逻辑（如申购、赎回等，可依程序内容调整说明）。
+  - 通过接口 `IMyToken` 操作 `MyToken`，实现房地产 ETF 的高层业务逻辑
+  - 主要功能：
+    - 创建房产（`createProperty`）
+    - 铸造份额（`mintShares`）
+    - 设置金融参数（`setPropertyFinancials`）
+    - 收益分配（`depositYield`、`claimYield`）
+    - 角色管理（`addPublisher`、`applyForPublisher`）
+
+- **`TestToken.sol`**
+  - ERC20 测试代币，用于收益分配系统
+  - 部署时自动给部署者铸造 1,000,000 代币用于测试
 
 ### 部署脚本（`src/hardhat/script/deploy.ts`）
 
@@ -156,12 +181,14 @@
 
 ### 前端合约地址配置（`src/contracts/addresses.ts`）
 
-- `contracts.localhost` 预先填入本地 Hardhat 网络上的示范地址：
-  - `myToken`
-  - `realEstateStorage`
-  - `realEstateLogic`
-- **未来部署到测试网 / 主网时**：
-  - 在部署完成后，请将实际的 Proxy / 合约地址填入对应网络字段（例如解开 `sepolia` 注释并更新地址）。
+- `contracts.localhost` 配置本地 Hardhat 网络上的合约地址：
+  - `myToken` - MyToken 代理合约地址
+  - `realEstateStorage` - RealEstateStorage 代理合约地址
+  - `realEstateLogic` - RealEstateLogic 代理合约地址
+  - `testToken` - TestToken 合约地址（用于收益分配）
+- **部署后更新地址**：
+  - 每次部署后，需要将实际的 Proxy 合约地址更新到 `addresses.ts`
+  - 未来部署到测试网 / 主网时，在对应网络字段中填入地址
 
 ---
 
@@ -366,9 +393,6 @@ npx hardhat verify      # 验证合约（用于 Etherscan）
 ## 📚 相关文档
 
 - **[OPERATION_GUIDE.md](./OPERATION_GUIDE.md)** - 完整的操作指南（设置、部署、测试、故障排查）
-- **[SETUP_INSTRUCTIONS.md](./SETUP_INSTRUCTIONS.md)** - IPFS/Pinata 集成设置说明（已整合到操作指南）
-- **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - 收益分配系统测试指南（已整合到操作指南）
-- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - 故障排查指南（已整合到操作指南）
 
 ---
 
