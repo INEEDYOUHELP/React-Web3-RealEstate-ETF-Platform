@@ -6,7 +6,10 @@ const globalForPrisma = globalThis as unknown as {
 
 // 确保 DATABASE_URL 环境变量已设置
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'mysql://root:123456@localhost:3306/realestate_etf';
+  throw new Error(
+    'DATABASE_URL environment variable is not set. ' +
+    'Please set it in your .env.local file or environment variables.'
+  );
 }
 
 export const db =
