@@ -40,7 +40,7 @@ export default function Navbar() {
       <div className={styles.navContainer}>
         <Link href="/" className={styles.navLogo}>
           <i className="fas fa-building"></i>
-          <span>RealEstate ETF</span>
+          <span>房地产平台</span>
         </Link>
         
         <ul className={`${styles.navMenu} ${isMenuOpen ? styles.active : ''}`}>

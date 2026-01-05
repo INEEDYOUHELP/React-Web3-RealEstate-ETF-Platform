@@ -1,17 +1,17 @@
-# RealEstate ETF 资产选择平台（毕业项目）
+# 基于React与Web3的房地产平台设计与实现（毕业项目）
 
-一个以 **「房地产 ETF 资产选择与模拟交易」** 为主题的全栈 Web3 毕业项目，整合 Next.js 应用、模拟投资与交易界面，以及 Hardhat 智能合约项目（包含 ERC1155 代币与房地产 ETF 逻辑合约）。
+一个以 **「房地产平台设计与实现」** 为主题的全栈 Web3 毕业项目，整合 Next.js 应用、房地产资产管理界面，以及 Hardhat 智能合约项目（包含 ERC1155 代币与房地产逻辑合约）。
 
 ---
 
 ## 📋 项目总览
 
-- **产品定位**：模拟一个去中心化的「房地产 ETF 投资平台」，提供资产浏览、数据分析、投资组合检视与交易体验。
+- **产品定位**：一个基于Web3技术的去中心化「房地产平台」，提供资产浏览、房产发行、收益分配与份额管理功能。
 - **前端应用**：基于 Next.js App Router，提供多页面仪表板式界面（首页、资产展示、房产发行、收益分配、角色管理、转账中心）。
 - **智能合约**：`src/hardhat/contracts` 中包含：
   - `MyToken.sol`：ERC1155 型态的基础代币（可升级架构）。
-  - `RealEstateStorage.sol`：房地产 ETF 相关的存储层。
-  - `RealEstateLogic.sol`：ETF 业务逻辑层（通过接口 `IMyToken` 与代币互动）。
+  - `RealEstateStorage.sol`：房地产相关的存储层。
+  - `RealEstateLogic.sol`：房地产业务逻辑层（通过接口 `IMyToken` 与代币互动）。
 - **Web3 / 钱包整合**：使用 RainbowKit + Wagmi + WalletConnect，支持多链（Mainnet / Polygon / Optimism / Arbitrum / Base / Localhost，并可选择启用 Sepolia 测试网）。
 - **使用场景**：作为毕业专题展示 **前端 UI/UX + 数据模型 + 智能合约结构 + Web3 基础整合** 的完整范例。
 
@@ -33,7 +33,7 @@
 │   ├── app/                         # Next.js App Router 应用
 │   │   ├── page.tsx                 # 首页（热门资产介绍）
 │   │   ├── layout.tsx               # 全局 Layout（Navbar + Footer + Providers）
-│   │   ├── assets/                  # 资产展示页（全球房地产 ETF 资产）
+│   │   ├── assets/                  # 资产展示页（全球房地产资产）
 │   │   ├── issuance/                # 房产发行页（创建房产、铸造份额）
 │   │   ├── distribution/             # 收益分配页（充值收益、提取收益）
 │   │   ├── roles/                   # 角色管理页（管理发布者角色）
@@ -62,8 +62,8 @@
 │   ├── hardhat/                     # Hardhat 智能合约子项目（独立 package.json）
 │   │   ├── contracts/               # Solidity 合约
 │   │   │   ├── MyToken.sol          # ERC1155 代币合约
-│   │   │   ├── RealEstateStorage.sol # 房地产 ETF 存储层
-│   │   │   ├── RealEstateLogic.sol  # 房地产 ETF 业务逻辑层
+│   │   │   ├── RealEstateStorage.sol # 房地产存储层
+│   │   │   ├── RealEstateLogic.sol  # 房地产业务逻辑层
 │   │   │   └── TestToken.sol        # 测试代币（用于收益分配）
 │   │   ├── script/
 │   │   │   └── deploy.ts            # 自定义部署脚本（部署所有合约）
@@ -96,9 +96,9 @@
 
 ### 首页（`/`）
 
-- **产品介绍**：说明「房地产 ETF 资产选择平台」定位，展示总资产价值、活跃用户数、房产项目数等指标（静态示意）。
+- **产品介绍**：说明「基于React与Web3的房地产平台」定位，展示总资产价值、活跃用户数、房产项目数等指标（静态示意）。
 - **特色模块**：以卡片形式说明「全球资产、安全透明、智能组合、即时交易」等卖点。
-- **热门资产区块**：展示数个精选房产 ETF（图片 + 城市 + 年化收益 + 市值），引导前往 `资产展示` 页面。
+- **热门资产区块**：展示数个精选房产项目（图片 + 城市 + 年化收益 + 市值），引导前往 `资产展示` 页面。
 - **钱包连线 CTA**：若尚未连线，显示 RainbowKit `ConnectButton`；已连线则引导前往 `/assets`。
 
 ### 资产展示（`/assets`）
@@ -114,7 +114,7 @@
 
 ### 房产发行（`/issuance`）
 
-- 发布者可以创建新的房地产 ETF 资产
+- 发布者可以创建新的房地产资产
 - 主要功能：
   - **创建房产**：填写房产信息（名称、描述、位置、类型、地区、价格、收益率等）
   - **上传图片**：自动上传到 IPFS 并生成元数据
@@ -125,7 +125,7 @@
 
 ### 收益分配（`/distribution`）
 
-- 管理房地产 ETF 的收益分配系统
+- 管理房地产资产的收益分配系统
 - 主要功能：
   - **充值收益**：发布者可以向收益池充值测试代币（TUSDC）
   - **提取收益**：持有者根据持有的份额比例提取收益
@@ -158,17 +158,17 @@
 ### 合约结构（位于 `src/hardhat/contracts`）
 
 - **`MyToken.sol`**
-  - 基于 ERC1155 的多代币标准，可作为房地产 ETF 单位的基础代币
+  - 基于 ERC1155 的多代币标准，可作为房地产单位的基础代币
   - 采用可升级架构（使用 OpenZeppelin Upgrades 套件）
   - 支持角色控制、铸造 / 销毁、暂停等功能
 
 - **`RealEstateStorage.sol`**
-  - 负责储存房地产 ETF 相关的数据结构
+  - 负责储存房地产相关的数据结构
   - 存储房产信息（名称、位置、元数据 URI、发行者、供应量等）
   - 存储金融参数（单价、年化收益率等）
 
 - **`RealEstateLogic.sol`**
-  - 通过接口 `IMyToken` 操作 `MyToken`，实现房地产 ETF 的高层业务逻辑
+  - 通过接口 `IMyToken` 操作 `MyToken`，实现房地产的高层业务逻辑
   - 主要功能：
     - 创建房产（`createProperty`）
     - 铸造份额（`mintShares`）

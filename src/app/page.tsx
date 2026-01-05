@@ -114,11 +114,11 @@ export default function HomePage() {
         <div className="hero-content">
           <div className="hero-text">
             <h1 className="hero-title">
-              <span className="gradient-text">房地产ETF</span>
-              <br />资产选择平台
+              <span className="gradient-text">基于React与Web3</span>
+              <br />的房地产平台
             </h1>
             <p className="hero-subtitle">
-              基于Web3技术的去中心化房地产投资平台，让您轻松参与全球房地产资产代币化交易
+              基于Web3技术的去中心化房地产平台，让您轻松管理房地产资产和代币化交易
             </p>
             <div className="hero-stats">
               <div className="stat-item">
@@ -232,8 +232,8 @@ export default function HomePage() {
               <div className="feature-icon">
                 <i className="fas fa-building"></i>
               </div>
-              <h3>份额发行</h3>
-              <p>发布者可以创建房产ETF并铸造份额，支持ERC1155标准代币化</p>
+              <h3>房产发行</h3>
+              <p>发布者可以创建房产项目并铸造份额，支持ERC1155标准代币化</p>
               <Link href="/issuance" className="feature-link">
                 了解详情 <i className="fas fa-arrow-right"></i>
               </Link>
@@ -263,7 +263,7 @@ export default function HomePage() {
                 <i className="fas fa-user-check"></i>
               </div>
               <h3>发布者认证</h3>
-              <p>申请成为发布者，通过KYC认证后即可创建和管理房产ETF</p>
+              <p>申请成为发布者，通过KYC认证后即可创建和管理房产项目</p>
               <Link href="/issuance" className="feature-link">
                 了解详情 <i className="fas fa-arrow-right"></i>
               </Link>
@@ -277,7 +277,7 @@ export default function HomePage() {
         <div className="container">
           <div className="section-header">
             <h2>热门资产</h2>
-            <p>当前平台上的房地产ETF资产</p>
+            <p>当前平台上的房地产项目</p>
           </div>
           {isLoadingProperties ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
@@ -288,7 +288,7 @@ export default function HomePage() {
             <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
               <i className="fas fa-building" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}></i>
               <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>暂无房产项目</p>
-              <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>发布者可以创建新的房产ETF项目</p>
+              <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>发布者可以创建新的房产项目</p>
               <Link href="/issuance" className="btn btn-primary">
                 <i className="fas fa-plus"></i>
                 创建房产项目

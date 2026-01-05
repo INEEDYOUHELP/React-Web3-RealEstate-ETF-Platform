@@ -10,10 +10,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh">
       <head>
-        <title>房地产ETF资产选择平台 - 基于React与Web3</title>
+        <title>基于React与Web3的房地产平台 - 毕业项目</title>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="description" content="基于Web3技术的去中心化房地产投资平台，让您轻松参与全球房地产资产代币化交易" />
+        <meta name="description" content="基于Web3技术的去中心化房地产平台，让您轻松管理房地产资产和代币化交易" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />

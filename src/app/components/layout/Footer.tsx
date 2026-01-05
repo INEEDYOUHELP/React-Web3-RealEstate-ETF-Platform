@@ -9,9 +9,9 @@ export default function Footer() {
           <div className={styles.footerSection}>
             <div className={styles.footerLogo}>
               <i className="fas fa-building"></i>
-              <span>RealEstate ETF</span>
+              <span>房地产平台</span>
             </div>
-            <p>基于Web3技术的去中心化房地产投资平台，让投资更简单、更透明、更安全。</p>
+            <p>基于Web3技术的去中心化房地产平台，让资产管理更简单、更透明、更安全。</p>
             <div className={styles.socialLinks}>
               <a href="#" aria-label="Twitter">
                 <i className="fab fa-twitter"></i>
@@ -59,7 +59,7 @@ export default function Footer() {
         </div>
         
         <div className={styles.footerBottom}>
-          <p>&copy; 2024 房地产ETF资产选择平台. 基于React与Web3技术构建.</p>
+          <p>&copy; 2024 基于React与Web3的房地产平台. 基于React与Web3技术构建.</p>
         </div>
       </div>
     </footer>

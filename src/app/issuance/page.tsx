@@ -764,7 +764,7 @@ export default function IssuancePage() {
           />
           <h1 className="page-title">份额发行</h1>
           <p className="page-subtitle">
-            发行房地产ETF份额，将优质资产代币化
+            发行房地产份额，将优质资产代币化
           </p>
         </div>
       </section>

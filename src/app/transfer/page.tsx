@@ -274,7 +274,7 @@ export default function TransferPage() {
           />
           <h1 className="page-title">份额转账</h1>
           <p className="page-subtitle">
-            C2C份额转账，安全便捷地转移您的ETF份额
+            C2C份额转账，安全便捷地转移您的房产份额
           </p>
         </div>
       </section>

@@ -405,7 +405,7 @@ export default function DistributionPage() {
           />
           <h1 className="page-title">收益分配</h1>
           <p className="page-subtitle">
-            查看和管理您的ETF收益分配，获取投资回报
+            查看和管理您的收益分配，获取投资回报
           </p>
         </div>
       </section>
