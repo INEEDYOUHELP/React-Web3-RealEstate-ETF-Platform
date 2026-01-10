@@ -78,10 +78,16 @@ function useAllProperties() {
         active: property.active ?? true,
         unitPriceWei: property.unitPriceWei ? BigInt(property.unitPriceWei.toString()) : BigInt(0),
         annualYieldBps: property.annualYieldBps ? BigInt(property.annualYieldBps.toString()) : BigInt(0),
+        projectEndTime: property.projectEndTime ? BigInt(property.projectEndTime.toString()) : BigInt(0), // 项目结束时间
       });
     });
 
-    return allProperties.filter(p => p.active);
+    // 过滤：只显示 active 且未结束的项目（projectEndTime === 0 表示未结束）
+    return allProperties.filter(p => {
+      const isActive = p.active;
+      const isNotEnded = p.projectEndTime === BigInt(0);
+      return isActive && isNotEnded;
+    });
   }, [propertiesData, propertyIds]);
 
   return { properties, isLoading };

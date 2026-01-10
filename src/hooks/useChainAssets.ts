@@ -17,6 +17,7 @@ interface ChainProperty {
   totalSupply: bigint;
   maxSupply: bigint;
   active: boolean;
+  projectEndTime?: bigint; // 项目结束时间（0 表示未结束）
 }
 
 export function useChainAssets() {
@@ -148,6 +149,13 @@ export function useChainAssets() {
             
             if (!property.active) {
               console.log(`Property ${index} is inactive`);
+              return null;
+            }
+
+            // 过滤已结束的项目：projectEndTime > 0 表示项目已结束
+            const projectEndTime = property.projectEndTime ? BigInt(property.projectEndTime.toString()) : BigInt(0);
+            if (projectEndTime > BigInt(0)) {
+              console.log(`Property ${index} skipped: project ended (projectEndTime: ${projectEndTime})`);
               return null;
             }
 

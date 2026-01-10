@@ -39,6 +39,24 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
     mapping(uint256 => mapping(address => uint256)) public claimedRewards;
 
     // ============================================
+    // 退款功能相关
+    // ============================================
+
+    /// @notice 用户购买记录结构体
+    struct PurchaseRecord {
+        uint256 amount;         // 购买的份额数量
+        uint256 payAmount;      // 支付的金额（wei）
+        uint256 purchaseTime;   // 购买时间戳
+        bool refunded;          // 是否已退款
+    }
+
+    /// @notice 购买记录：propertyId => (buyer => PurchaseRecord[])
+    mapping(uint256 => mapping(address => PurchaseRecord[])) public purchaseRecords;
+
+    /// @notice 房产托管资金池：propertyId => 总托管金额
+    mapping(uint256 => uint256) public escrowPools;
+
+    // ============================================
     // 发布者申请功能
     // ============================================
 
@@ -75,6 +93,15 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
     event YieldDeposited(uint256 indexed propertyId, address indexed publisher, uint256 amount);
     event YieldClaimed(uint256 indexed propertyId, address indexed holder, uint256 amount);
     event SharesPurchased(uint256 indexed propertyId, address indexed buyer, uint256 amount, uint256 payAmount);
+    event SharesRefunded(
+        uint256 indexed propertyId,
+        address indexed buyer,
+        uint256 amount,
+        uint256 refundAmount,
+        uint256 purchaseTime
+    );
+    event EscrowWithdrawn(uint256 indexed propertyId, address indexed publisher, uint256 amount);
+    event ProjectEndTimeSet(uint256 indexed propertyId, uint256 endTime);
     
     // 发布者申请相关事件
     event PublisherApplicationSubmitted(
@@ -324,6 +351,34 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
         totalYieldWei = (totalValue * p.annualYieldBps) / 10000;
     }
 
+    /// @notice 计算基于实际发行量的保障金要求
+    /// @dev 用于前端显示和验证保障金是否足够
+    /// @param propertyId 房产 ID
+    /// @return requiredGuaranteeWei 所需的保障金金额（wei）
+    function calculateRequiredGuaranteeFund(uint256 propertyId) external view returns (uint256 requiredGuaranteeWei) {
+        RealEstateStorage.Property memory p = store.getProperty(propertyId);
+        if (p.annualYieldBps == 0 || p.unitPriceWei == 0 || p.totalSupply == 0) {
+            return 0;
+        }
+        // 总价值 = 单价 × 实际发行量
+        uint256 totalValue = p.unitPriceWei * p.totalSupply;
+        // 保障金 = 总价值 × 年化收益率 / 10000
+        requiredGuaranteeWei = (totalValue * p.annualYieldBps) / 10000;
+    }
+
+    /// @notice 查询当前收益池金额是否达到保障金要求（用于前端显示状态）
+    /// @param propertyId 房产 ID
+    /// @return 如果收益池金额 >= 保障金要求，返回 true；否则返回 false
+    function isGuaranteeFundSufficient(uint256 propertyId) external view returns (bool) {
+        uint256 required = this.calculateRequiredGuaranteeFund(propertyId);
+        // 如果保障金要求为0（通常是因为 totalSupply == 0，还没有铸造份额）
+        // 只有当收益池中确实有资金时，才认为已满足（避免未充值就显示已完成）
+        if (required == 0) {
+            return yieldPools[propertyId] > 0;
+        }
+        return yieldPools[propertyId] >= required;
+    }
+
     // ============================================
     // 收益分配功能
     // ============================================
@@ -364,21 +419,27 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
         RealEstateStorage.Property memory p = store.getProperty(propertyId);
         require(p.active, "RealEstateLogic: property inactive");
 
+        // 时间锁检查：必须满足以下条件之一：
+        // 1. 项目创建时间 + 1 年 <= 当前时间
+        // 2. 项目已结束（projectEndTime > 0 && block.timestamp >= projectEndTime）
+        bool oneYearPassed = block.timestamp >= p.createTime + 365 days;
+        bool projectEnded = (p.projectEndTime > 0 && block.timestamp >= p.projectEndTime);
+        require(oneYearPassed || projectEnded, "RealEstateLogic: yield locked for 1 year or until project ends");
+
         // 获取用户持有的份额
         uint256 balance = shareToken.balanceOf(msg.sender, p.tokenId);
         require(balance > 0, "RealEstateLogic: no shares");
 
-        // 计算应得收益
-        uint256 totalShares = p.totalSupply;
-        require(totalShares > 0, "RealEstateLogic: no shares minted");
+        // 计算应得收益 - 使用 totalSupply（实际发行量）作为分母
+        require(p.totalSupply > 0, "RealEstateLogic: no shares minted");
 
         uint256 totalReward = yieldPools[propertyId];
         if (totalReward == 0) {
             revert("RealEstateLogic: no yield in pool");
         }
 
-        // 计算用户应得收益 = (持有份额 / 总份额) × 收益池总额
-        uint256 userReward = (totalReward * balance) / totalShares;
+        // 计算用户应得收益 = (持有份额 / 实际发行量) × 收益池总额
+        uint256 userReward = (totalReward * balance) / p.totalSupply;
 
         // 减去已提取部分
         uint256 claimed = claimedRewards[propertyId][msg.sender];
@@ -387,6 +448,9 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
 
         // 更新已提取记录
         claimedRewards[propertyId][msg.sender] += claimable;
+
+        // 从收益池中减少已提取的金额
+        yieldPools[propertyId] -= claimable;
 
         // 转账给用户
         rewardToken.safeTransfer(msg.sender, claimable);
@@ -404,7 +468,21 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
         }
 
         RealEstateStorage.Property memory p = store.getProperty(propertyId);
-        if (!p.active || p.totalSupply == 0) {
+        if (!p.active) {
+            return 0;
+        }
+
+        // 时间锁检查：必须满足以下条件之一才能提取收益：
+        // 1. 项目创建时间 + 1 年 <= 当前时间
+        // 2. 项目已结束（projectEndTime > 0 && block.timestamp >= projectEndTime）
+        bool oneYearPassed = block.timestamp >= p.createTime + 365 days;
+        bool projectEnded = (p.projectEndTime > 0 && block.timestamp >= p.projectEndTime);
+        if (!oneYearPassed && !projectEnded) {
+            return 0; // 收益仍在锁定中
+        }
+
+        // 需要至少有一些份额已发行
+        if (p.totalSupply == 0) {
             return 0;
         }
 
@@ -418,7 +496,7 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
             return 0;
         }
 
-        // 计算用户应得收益
+        // 计算用户应得收益 = (持有份额 / 实际发行量) × 收益池总额
         uint256 userReward = (totalReward * balance) / p.totalSupply;
         uint256 claimed = claimedRewards[propertyId][holder];
 
@@ -433,10 +511,10 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
     }
 
     // ============================================
-    // 购买份额：buyer -> publisher 直接结算
+    // 购买份额：buyer -> 合约托管
     // ============================================
 
-    /// @notice 购买房产份额，支付 rewardToken，份额立即铸造给买家
+    /// @notice 购买房产份额，支付 rewardToken 到托管池，份额立即铸造给买家
     /// @dev 需先由买家调用 rewardToken.approve(logic, payAmount)
     /// @param propertyId 房产 ID
     /// @param amount 购买份额数量
@@ -456,14 +534,216 @@ contract RealEstateLogic is Initializable, AccessControlUpgradeable {
         require(p.unitPriceWei > 0, "RealEstateLogic: unit price not set");
         uint256 payAmount = p.unitPriceWei * amount;
 
-        // 买家支付给发布者
-        rewardToken.safeTransferFrom(msg.sender, p.publisher, payAmount);
+        // 从买家转账到合约托管池（而不是直接给发布者）
+        rewardToken.safeTransferFrom(msg.sender, address(this), payAmount);
+
+        // 更新托管池
+        escrowPools[propertyId] += payAmount;
+
+        // 记录购买信息
+        purchaseRecords[propertyId][msg.sender].push(PurchaseRecord({
+            amount: amount,
+            payAmount: payAmount,
+            purchaseTime: block.timestamp,
+            refunded: false
+        }));
 
         // 铸造份额给买家
         shareToken.mint(msg.sender, p.tokenId, amount, "");
         store.increaseSupply(propertyId, amount);
 
         emit SharesPurchased(propertyId, msg.sender, amount, payAmount);
+    }
+
+    // ============================================
+    // 退款功能
+    // ============================================
+
+    /// @notice 退款函数：用户可以退款购买的份额
+    /// @param propertyId 房产 ID
+    /// @param purchaseIndex 购买记录的索引（用户可能有多次购买）
+    function refundShares(uint256 propertyId, uint256 purchaseIndex) external {
+        require(address(rewardToken) != address(0), "RealEstateLogic: reward token not set");
+
+        RealEstateStorage.Property memory p = store.getProperty(propertyId);
+        require(p.publisher != address(0), "RealEstateLogic: property not found");
+
+        PurchaseRecord[] storage records = purchaseRecords[propertyId][msg.sender];
+        require(purchaseIndex < records.length, "RealEstateLogic: invalid purchase index");
+
+        PurchaseRecord storage record = records[purchaseIndex];
+        require(!record.refunded, "RealEstateLogic: already refunded");
+
+        // 检查退款条件
+        bool canRefund = false;
+        
+        // 条件1: 购买后已满锁定期间（默认1年）
+        if (block.timestamp >= record.purchaseTime + p.refundLockPeriod) {
+            canRefund = true;
+        }
+
+        // 条件2: 项目已结束
+        if (p.projectEndTime > 0 && block.timestamp >= p.projectEndTime) {
+            canRefund = true;
+        }
+
+        require(canRefund, "RealEstateLogic: refund conditions not met");
+
+        // 检查用户是否还持有足够的份额
+        uint256 balance = shareToken.balanceOf(msg.sender, p.tokenId);
+        require(balance >= record.amount, "RealEstateLogic: insufficient shares");
+
+        // 标记为已退款
+        record.refunded = true;
+
+        // 销毁用户的份额代币
+        shareToken.burn(msg.sender, p.tokenId, record.amount);
+
+        // 从托管池中退款给用户
+        require(escrowPools[propertyId] >= record.payAmount, "RealEstateLogic: insufficient escrow");
+        escrowPools[propertyId] -= record.payAmount;
+
+        // 减少总供应量
+        store.decreaseSupply(propertyId, record.amount);
+
+        // 退款给用户
+        rewardToken.safeTransfer(msg.sender, record.payAmount);
+
+        emit SharesRefunded(
+            propertyId,
+            msg.sender,
+            record.amount,
+            record.payAmount,
+            record.purchaseTime
+        );
+    }
+
+    /// @notice 查询用户是否可以退款
+    /// @param propertyId 房产 ID
+    /// @param buyer 买家地址
+    /// @param purchaseIndex 购买记录索引
+    /// @return canRefund 是否可以退款
+    /// @return reason 原因（如果不能退款）
+    /// @return refundAmount 可退款金额
+    function canRefundShares(
+        uint256 propertyId,
+        address buyer,
+        uint256 purchaseIndex
+    ) external view returns (
+        bool canRefund,
+        string memory reason,
+        uint256 refundAmount
+    ) {
+        RealEstateStorage.Property memory p = store.getProperty(propertyId);
+        if (p.publisher == address(0)) {
+            return (false, "property not found", 0);
+        }
+
+        PurchaseRecord[] storage records = purchaseRecords[propertyId][buyer];
+        if (purchaseIndex >= records.length) {
+            return (false, "invalid purchase index", 0);
+        }
+
+        PurchaseRecord memory record = records[purchaseIndex];
+        if (record.refunded) {
+            return (false, "already refunded", 0);
+        }
+
+        // 检查是否还持有份额
+        uint256 balance = shareToken.balanceOf(buyer, p.tokenId);
+        if (balance < record.amount) {
+            return (false, "insufficient shares", 0);
+        }
+
+        // 检查退款条件
+        if (block.timestamp >= record.purchaseTime + p.refundLockPeriod) {
+            return (true, "lock period expired", record.payAmount);
+        }
+
+        if (p.projectEndTime > 0 && block.timestamp >= p.projectEndTime) {
+            return (true, "project ended", record.payAmount);
+        }
+
+        uint256 timeRemaining = (record.purchaseTime + p.refundLockPeriod) - block.timestamp;
+        uint256 daysRemaining = timeRemaining / 1 days;
+        return (false, string(abi.encodePacked("wait ", _uintToString(daysRemaining), " days")), 0);
+    }
+
+    /// @notice 获取用户的所有购买记录数量
+    /// @param propertyId 房产 ID
+    /// @param buyer 买家地址
+    /// @return 购买记录数量
+    function getPurchaseRecordCount(uint256 propertyId, address buyer) external view returns (uint256) {
+        return purchaseRecords[propertyId][buyer].length;
+    }
+
+    /// @notice 发布者提取托管资金（可选功能，用于项目运行期间提取部分资金）
+    /// @param propertyId 房产 ID
+    /// @param amount 提取金额
+    function withdrawEscrow(uint256 propertyId, uint256 amount) external {
+        RealEstateStorage.Property memory p = store.getProperty(propertyId);
+        require(p.publisher == msg.sender, "RealEstateLogic: not property publisher");
+
+        require(escrowPools[propertyId] >= amount, "RealEstateLogic: insufficient escrow");
+        escrowPools[propertyId] -= amount;
+
+        rewardToken.safeTransfer(p.publisher, amount);
+        emit EscrowWithdrawn(propertyId, msg.sender, amount);
+    }
+
+    /// @notice 设置项目结束时间（仅发布者）
+    /// @dev 在项目结束前，会检查收益池是否有足够的资金支付给所有持有者
+    /// @param propertyId 房产 ID
+    /// @param endTime 结束时间戳（Unix timestamp）
+    function setProjectEndTime(uint256 propertyId, uint256 endTime) external onlyRole(PUBLISHER_ROLE) {
+        RealEstateStorage.Property memory p = store.getProperty(propertyId);
+        require(p.publisher == msg.sender, "RealEstateLogic: not property publisher");
+        
+        // 如果项目还未结束，检查收益池是否有足够的资金
+        if (p.projectEndTime == 0 || block.timestamp < p.projectEndTime) {
+            // 计算所需的保障金（基于实际发行量）
+            uint256 requiredGuarantee = this.calculateRequiredGuaranteeFund(propertyId);
+            uint256 currentYieldPool = yieldPools[propertyId];
+            
+            // 要求收益池金额 >= 保障金要求
+            require(
+                currentYieldPool >= requiredGuarantee,
+                "RealEstateLogic: insufficient yield pool. Publisher must deposit enough funds before ending project"
+            );
+        }
+        
+        store.setProjectEndTime(propertyId, endTime);
+        emit ProjectEndTimeSet(propertyId, endTime);
+    }
+
+    /// @notice 设置退款锁定期间（仅发布者，可选）
+    /// @param propertyId 房产 ID
+    /// @param period 锁定期间（秒数）
+    function setRefundLockPeriod(uint256 propertyId, uint256 period) external onlyRole(PUBLISHER_ROLE) {
+        RealEstateStorage.Property memory p = store.getProperty(propertyId);
+        require(p.publisher == msg.sender, "RealEstateLogic: not property publisher");
+        store.setRefundLockPeriod(propertyId, period);
+    }
+
+
+    /// @notice 内部函数：将 uint256 转换为 string
+    function _uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
 }
 

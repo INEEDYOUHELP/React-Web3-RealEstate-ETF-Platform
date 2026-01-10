@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { isAddress } from 'viem';
 import Breadcrumb from '../components/layout/Breadcrumb';
@@ -178,6 +178,7 @@ export default function TransferPage() {
   const [amount, setAmount] = useState('');
   const [transferHash, setTransferHash] = useState<`0x${string}` | null>(null);
   const [transferStatus, setTransferStatus] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // 获取选中的房产信息
   const selectedProperty = useMemo(() => {
@@ -186,7 +187,7 @@ export default function TransferPage() {
   }, [allProperties, selectedPropertyId]);
 
   // 查询用户持有的份额
-  const { data: userBalance } = useReadContract({
+  const { data: userBalance, refetch: refetchUserBalance } = useReadContract({
     address: addresses?.myToken,
     abi: erc1155Abi,
     functionName: 'balanceOf',
@@ -442,6 +443,10 @@ export default function TransferPage() {
                       setTransferHash(null);
                       setTransferStatus(null);
                       setSelectedPropertyId(null);
+                      // 刷新余额查询
+                      refetchUserBalance();
+                      // 触发持有份额列表刷新
+                      setRefreshTrigger(prev => prev + 1);
                     }}
                   />
                 )}
@@ -503,6 +508,7 @@ export default function TransferPage() {
                         property={property}
                         myTokenAddress={addresses.myToken}
                         userAddress={address}
+                        refreshTrigger={refreshTrigger}
                       />
                     ))}
                   </div>
@@ -521,20 +527,31 @@ function UserShareBalance({
   property,
   myTokenAddress,
   userAddress,
+  refreshTrigger,
 }: {
   property: any;
   myTokenAddress?: string;
   userAddress?: string;
+  refreshTrigger?: number;
 }) {
-  const { data: balance } = useReadContract({
+  const { data: balance, refetch: refetchBalance } = useReadContract({
     address: myTokenAddress as `0x${string}` | undefined,
     abi: erc1155Abi,
     functionName: 'balanceOf',
     args: userAddress && property.tokenId
       ? [userAddress, property.tokenId]
       : undefined,
-    query: { enabled: !!myTokenAddress && !!userAddress && !!property.tokenId },
+    query: { 
+      enabled: !!myTokenAddress && !!userAddress && !!property.tokenId,
+    },
   });
+
+  // 当 refreshTrigger 变化时，重新查询余额
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      refetchBalance();
+    }
+  }, [refreshTrigger, refetchBalance]);
 
   const balanceNum = balance ? Number(balance.toString()) : 0;
 

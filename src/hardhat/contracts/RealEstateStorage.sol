@@ -19,6 +19,9 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
         uint256 unitPriceWei; // 单价（wei 单位，便于精确计算）
         uint256 annualYieldBps; // 年化收益率（基点，10000 = 100%，例如 850 = 8.5%）
         uint256 lastYieldTimestamp; // 上次分配收益的时间戳（0 表示未分配过）
+        uint256 createTime;        // 项目创建时间戳（用于收益提取时间锁）
+        uint256 projectEndTime;     // 项目结束时间（0 表示未设置）
+        uint256 refundLockPeriod;   // 退款锁定期间（秒数，默认 1 年 = 365 * 24 * 60 * 60）
     }
 
     /// @notice 下一个可用的 propertyId，从 1 开始自增
@@ -66,7 +69,10 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
             active: true,
             unitPriceWei: 0, // 初始为 0，需要后续设置
             annualYieldBps: 0, // 初始为 0，需要后续设置
-            lastYieldTimestamp: 0 // 初始为 0，表示未分配过
+            lastYieldTimestamp: 0, // 初始为 0，表示未分配过
+            createTime: block.timestamp,     // 记录创建时间（用于收益提取时间锁）
+            projectEndTime: 0,              // 初始为 0，表示未设置
+            refundLockPeriod: 365 days      // 默认 1 年锁定
         });
     }
 
@@ -75,6 +81,14 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
         Property storage p = _properties[propertyId];
         require(p.publisher != address(0), "RealEstateStorage: property not found");
         p.totalSupply += amount;
+    }
+
+    /// @notice 减少某房产的已发行份额（退款时调用）
+    function decreaseSupply(uint256 propertyId, uint256 amount) external onlyManager {
+        Property storage p = _properties[propertyId];
+        require(p.publisher != address(0), "RealEstateStorage: property not found");
+        require(p.totalSupply >= amount, "RealEstateStorage: insufficient supply");
+        p.totalSupply -= amount;
     }
 
     /// @notice 启用/停用某房产
@@ -110,6 +124,20 @@ contract RealEstateStorage is Initializable, OwnableUpgradeable {
         Property storage p = _properties[propertyId];
         require(p.publisher != address(0), "RealEstateStorage: property not found");
         p.lastYieldTimestamp = timestamp;
+    }
+
+    /// @notice 设置项目结束时间（仅 manager）
+    function setProjectEndTime(uint256 propertyId, uint256 endTime) external onlyManager {
+        Property storage p = _properties[propertyId];
+        require(p.publisher != address(0), "RealEstateStorage: property not found");
+        p.projectEndTime = endTime;
+    }
+
+    /// @notice 设置退款锁定期间（仅 manager）
+    function setRefundLockPeriod(uint256 propertyId, uint256 period) external onlyManager {
+        Property storage p = _properties[propertyId];
+        require(p.publisher != address(0), "RealEstateStorage: property not found");
+        p.refundLockPeriod = period;
     }
 }
 

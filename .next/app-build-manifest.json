@@ -11,11 +11,16 @@
       "static/chunks/main-app.js",
       "static/chunks/app/page.js"
     ],
-    "/assets/page": [
+    "/roles/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/assets/page.css",
-      "static/chunks/app/assets/page.js"
+      "static/css/app/roles/page.css",
+      "static/chunks/app/roles/page.js"
+    ],
+    "/api/kyc/applications/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/kyc/applications/route.js"
     ],
     "/issuance/page": [
       "static/chunks/webpack.js",
@@ -28,21 +33,11 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/kyc/applications/[address]/route.js"
     ],
-    "/roles/page": [
+    "/assets/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/roles/page.css",
-      "static/chunks/app/roles/page.js"
-    ],
-    "/api/kyc/applications/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/kyc/applications/route.js"
-    ],
-    "/api/kyc/apply/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/kyc/apply/route.js"
+      "static/css/app/assets/page.css",
+      "static/chunks/app/assets/page.js"
     ],
     "/distribution/page": [
       "static/chunks/webpack.js",
@@ -55,6 +50,16 @@
       "static/chunks/main-app.js",
       "static/css/app/transfer/page.css",
       "static/chunks/app/transfer/page.js"
+    ],
+    "/api/kyc/apply/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/kyc/apply/route.js"
+    ],
+    "/api/kyc/download/[applicationId]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/kyc/download/[applicationId]/route.js"
     ]
   }
 }

@@ -1,7 +1,10 @@
 {
+  "/api/kyc/applications/route": "app/api/kyc/applications/route.js",
+  "/api/kyc/applications/[address]/route": "app/api/kyc/applications/[address]/route.js",
+  "/transfer/page": "app/transfer/page.js",
   "/page": "app/page.js",
-  "/issuance/page": "app/issuance/page.js",
   "/assets/page": "app/assets/page.js",
   "/roles/page": "app/roles/page.js",
-  "/distribution/page": "app/distribution/page.js"
+  "/distribution/page": "app/distribution/page.js",
+  "/issuance/page": "app/issuance/page.js"
 }

@@ -2,22 +2,19 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther, formatEther } from 'viem';
+import { formatEther } from 'viem';
 import Breadcrumb from '../components/layout/Breadcrumb';
 import { contracts, SupportedNetwork } from '../../contracts/addresses';
 import { realEstateLogicAbi, erc20Abi, realEstateStorageAbi, erc1155Abi } from '../../contracts/abis';
-import { usePublisherProperties, type PublisherProperty } from '../../hooks/usePublisherProperties';
 
-// 收益交易状态组件
+// 收益提取交易状态组件
 function YieldTransactionStatus({
   propertyId,
   hash,
-  type,
   onSuccess,
 }: {
   propertyId: number;
   hash: `0x${string}`;
-  type: 'deposit' | 'claim';
   onSuccess: () => void;
 }) {
   const { isLoading, isSuccess, isError } = useWaitForTransactionReceipt({
@@ -39,7 +36,7 @@ function YieldTransactionStatus({
         color: '#1d4ed8',
         fontSize: '14px',
       }}>
-        {type === 'deposit' ? '充值确认中...' : '提取确认中...'} 哈希: {hash.slice(0, 10)}...
+        提取确认中... 哈希: {hash.slice(0, 10)}...
       </div>
     );
   }
@@ -67,7 +64,7 @@ function YieldTransactionStatus({
         color: '#059669',
         fontSize: '14px',
       }}>
-        ✓ {type === 'deposit' ? '收益充值成功！' : '收益提取成功！'} 交易哈希: {hash.slice(0, 10)}...
+        ✓ 收益提取成功！交易哈希: {hash.slice(0, 10)}...
       </div>
     );
   }
@@ -158,6 +155,9 @@ function useAllProperties() {
         unitPriceWei: property.unitPriceWei ? BigInt(property.unitPriceWei.toString()) : BigInt(0),
         annualYieldBps: property.annualYieldBps ? BigInt(property.annualYieldBps.toString()) : BigInt(0),
         lastYieldTimestamp: property.lastYieldTimestamp ? BigInt(property.lastYieldTimestamp.toString()) : BigInt(0),
+        createTime: property.createTime ? BigInt(property.createTime.toString()) : BigInt(0),
+        projectEndTime: property.projectEndTime ? BigInt(property.projectEndTime.toString()) : BigInt(0),
+        refundLockPeriod: property.refundLockPeriod ? BigInt(property.refundLockPeriod.toString()) : BigInt(365 * 24 * 60 * 60),
       });
     });
 
@@ -165,6 +165,366 @@ function useAllProperties() {
   }, [propertiesData, propertyIds]);
 
   return { properties, isLoading };
+}
+
+// 购买记录类型
+interface PurchaseRecord {
+  amount: bigint;
+  payAmount: bigint;
+  purchaseTime: bigint;
+  refunded: boolean;
+}
+
+// 获取用户购买记录的 hook
+function usePurchaseRecords(propertyId: bigint | undefined, buyer: string | undefined, logicAddress: `0x${string}` | undefined) {
+  // 先获取购买记录数量
+  const { data: recordCount } = useReadContract({
+    address: logicAddress,
+    abi: realEstateLogicAbi,
+    functionName: 'getPurchaseRecordCount',
+    args: propertyId !== undefined && buyer ? [propertyId, buyer as `0x${string}`] : undefined,
+    query: { enabled: !!logicAddress && propertyId !== undefined && !!buyer },
+  });
+
+  // 构建查询所有购买记录的合约调用
+  const purchaseRecordQueries = useMemo(() => {
+    if (!logicAddress || propertyId === undefined || !buyer || !recordCount || recordCount === 0n) return [];
+    
+    const count = Number(recordCount);
+    return Array.from({ length: count }, (_, i) => ({
+      address: logicAddress,
+      abi: realEstateLogicAbi,
+      functionName: 'purchaseRecords' as const,
+      args: [propertyId, buyer as `0x${string}`, BigInt(i)] as [bigint, `0x${string}`, bigint],
+    }));
+  }, [logicAddress, propertyId, buyer, recordCount]);
+
+  const { data: purchaseRecordsData } = useReadContracts({
+    contracts: purchaseRecordQueries,
+    query: { enabled: purchaseRecordQueries.length > 0 },
+  });
+
+  const purchaseRecords = useMemo(() => {
+    if (!purchaseRecordsData) return [];
+    
+    return purchaseRecordsData.map((item: any) => {
+      if (item?.status !== 'success') return null;
+      const record = item.result as any;
+      if (!record) return null;
+      
+      return {
+        amount: BigInt(record[0].toString()),
+        payAmount: BigInt(record[1].toString()),
+        purchaseTime: BigInt(record[2].toString()),
+        refunded: record[3] as boolean,
+      } as PurchaseRecord;
+    }).filter((r): r is PurchaseRecord => r !== null);
+  }, [purchaseRecordsData]);
+
+  return { purchaseRecords, recordCount: recordCount || 0n };
+}
+
+// 退款状态组件
+function RefundStatus({
+  propertyId,
+  purchaseIndex,
+  purchaseRecord,
+  property,
+  buyer,
+  logicAddress,
+}: {
+  propertyId: bigint;
+  purchaseIndex: number;
+  purchaseRecord: PurchaseRecord;
+  property: any;
+  buyer: string;
+  logicAddress: `0x${string}` | undefined;
+}) {
+  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
+  const [refundHash, setRefundHash] = useState<`0x${string}` | null>(null);
+  const [refundStatusMessage, setRefundStatusMessage] = useState<string | null>(null);
+
+  // 获取 MyToken 合约地址（用于授权）
+  const chainId = useChainId();
+  const myTokenAddress = useMemo(() => {
+    const key = chainId === 31337 || chainId === 1337 ? 'localhost' : undefined;
+    return key ? contracts[key]?.myToken : undefined;
+  }, [chainId]);
+
+  // 查询是否已授权代币操作
+  const { data: isApproved } = useReadContract({
+    address: myTokenAddress,
+    abi: erc1155Abi,
+    functionName: 'isApprovedForAll',
+    args: buyer && logicAddress ? [buyer as `0x${string}`, logicAddress as `0x${string}`] : undefined,
+    query: { enabled: !!myTokenAddress && !!buyer && !!logicAddress },
+  });
+
+  // 查询是否可以退款
+  const { data: refundStatus } = useReadContract({
+    address: logicAddress,
+    abi: realEstateLogicAbi,
+    functionName: 'canRefundShares',
+    args: [propertyId, buyer as `0x${string}`, BigInt(purchaseIndex)],
+    query: { enabled: !!logicAddress && !purchaseRecord.refunded },
+  });
+
+  // 解析退款状态 - canRefundShares 返回 [bool, string, uint256]
+  const canRefundFromContract = refundStatus && Array.isArray(refundStatus) ? (refundStatus[0] as boolean) : false;
+  const reason = refundStatus && Array.isArray(refundStatus) ? (refundStatus[1] as string) : undefined;
+  const refundAmount = refundStatus && Array.isArray(refundStatus) ? (BigInt(refundStatus[2].toString())) : undefined;
+
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  const purchaseDate = new Date(Number(purchaseRecord.purchaseTime) * 1000);
+  const refundLockPeriod = property.refundLockPeriod || BigInt(365 * 24 * 60 * 60);
+  const lockPeriodEnd = purchaseRecord.purchaseTime + refundLockPeriod;
+  const daysRemaining = lockPeriodEnd > now ? Math.floor(Number(lockPeriodEnd - now) / (24 * 60 * 60)) : 0;
+  const isProjectEnded = property.projectEndTime && property.projectEndTime > 0n && now >= property.projectEndTime;
+  
+  // 判断是否可以退款：合约返回 true 或项目已结束
+  const canRefund = canRefundFromContract || isProjectEnded;
+
+  if (purchaseRecord.refunded) {
+    return (
+      <div style={{
+        padding: '12px',
+        borderRadius: '8px',
+        background: 'rgba(148, 163, 184, 0.1)',
+        border: '1px solid #cbd5e1',
+      }}>
+        <div style={{ fontSize: '13px', color: '#64748b' }}>
+          ✓ 已退款
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      padding: '12px',
+      borderRadius: '8px',
+      background: canRefund ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+      border: `1px solid ${canRefund ? '#10b981' : '#f59e0b'}`,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+            {canRefund ? '✓ 可申请退款' : '⏳ 退款锁定中'}
+          </div>
+          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>
+            购买时间: {purchaseDate.toLocaleString('zh-CN')}
+          </div>
+          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>
+            购买份额: {purchaseRecord.amount.toString()}
+          </div>
+          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+            可退金额: {(canRefund && refundAmount) ? formatEther(refundAmount) : formatEther(purchaseRecord.payAmount)} TUSDC
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          {canRefund ? (
+            <button
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: '#10b981',
+                color: '#fff',
+                cursor: isWritePending || !!refundHash ? 'not-allowed' : 'pointer',
+                fontSize: '13px',
+                fontWeight: 500,
+                opacity: isWritePending || !!refundHash ? 0.7 : 1,
+              }}
+              onClick={async () => {
+                if (!logicAddress || !myTokenAddress || isWritePending || refundHash) return;
+
+                const confirmRefund = window.confirm(
+                  `确认申请退款？\n\n` +
+                    `房产ID: ${propertyId}\n` +
+                    `退款份额: ${purchaseRecord.amount.toString()}\n` +
+                    `退款金额: ${formatEther(refundAmount || purchaseRecord.payAmount)} TUSDC\n\n` +
+                    `退款后，对应的份额代币将被销毁，资金将返还到您的钱包。`
+                );
+                if (!confirmRefund) return;
+
+                try {
+                  // 1. 如果未授权，先授权 ERC1155 代币给合约
+                  if (!isApproved) {
+                    setRefundStatusMessage('授权代币中...');
+
+                    // @ts-ignore - 避免深度类型推断问题
+                    await writeContractAsync({
+                      address: myTokenAddress as `0x${string}`,
+                      abi: erc1155Abi as any,
+                      functionName: 'setApprovalForAll',
+                      args: [logicAddress as `0x${string}`, true],
+                    } as any);
+
+                    // 等待一下确保授权生效
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                  }
+
+                  // 2. 调用退款函数
+                  setRefundStatusMessage('提交退款交易中...');
+                  // @ts-ignore - 避免深度类型推断问题
+                  const hash = await writeContractAsync({
+                    address: logicAddress as `0x${string}`,
+                    abi: realEstateLogicAbi as any,
+                    functionName: 'refundShares',
+                    args: [propertyId, BigInt(purchaseIndex)],
+                  } as any);
+
+                  setRefundHash(hash);
+                  setRefundStatusMessage(`退款交易已提交：${hash.slice(0, 10)}...`);
+                } catch (err) {
+                  console.error('退款失败:', err);
+                  let errorMsg = '退款失败，请稍后重试。';
+                  if (err instanceof Error) {
+                    errorMsg = err.message;
+                    // 提供更友好的错误提示
+                    if (errorMsg.includes('insufficient shares')) {
+                      errorMsg = '退款失败：您当前持有的份额不足，可能已经转出部分份额。请确保持有足够的份额后再申请退款。';
+                    } else if (errorMsg.includes('refund conditions not met')) {
+                      errorMsg = '退款失败：退款条件未满足。请确保项目已结束或购买后已满锁定期间。';
+                    } else if (errorMsg.includes('invalid purchase index')) {
+                      errorMsg = '退款失败：无效的购买记录索引。请刷新页面重试。';
+                    } else if (errorMsg.includes('already refunded')) {
+                      errorMsg = '退款失败：该购买记录已退款。';
+                    } else if (errorMsg.includes('insufficient escrow')) {
+                      errorMsg = '退款失败：托管池资金不足。请联系管理员。';
+                    }
+                  }
+                  setRefundStatusMessage(errorMsg);
+                  
+                  // 10秒后清除错误消息（延长显示时间以便用户阅读）
+                  setTimeout(() => {
+                    setRefundStatusMessage(null);
+                  }, 10000);
+                }
+              }}
+              disabled={isWritePending || !!refundHash}
+            >
+              {refundHash ? '退款处理中...' : isWritePending ? '处理中...' : isProjectEnded ? '项目结束 - 申请退款' : '申请退款'}
+            </button>
+          ) : (
+            <div style={{ fontSize: '12px', color: '#f59e0b' }}>
+              {reason || `还需等待 ${daysRemaining} 天`}
+            </div>
+          )}
+        </div>
+      </div>
+      {!canRefund && (
+        <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>
+          锁定期剩余: {daysRemaining} 天 ({new Date(Number(lockPeriodEnd) * 1000).toLocaleDateString('zh-CN')})
+        </div>
+      )}
+      {isProjectEnded && (
+        <div style={{ fontSize: '11px', color: '#10b981', marginTop: '8px' }}>
+          ✓ 项目已结束，可立即申请退款
+        </div>
+      )}
+
+      {/* 退款交易状态 */}
+      {refundHash && (
+        <RefundTransactionStatus
+          propertyId={propertyId}
+          purchaseIndex={purchaseIndex}
+          hash={refundHash}
+          onSuccess={() => {
+            setRefundHash(null);
+            setRefundStatusMessage(null);
+            // 刷新页面数据（通过重新挂载组件或使用 refetch）
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* 退款状态消息 */}
+      {refundStatusMessage && !refundHash && (
+        <div style={{
+          marginTop: '8px',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          background: 'rgba(239, 68, 68, 0.1)',
+          color: '#dc2626',
+          fontSize: '12px',
+        }}>
+          {refundStatusMessage}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 退款交易状态组件
+function RefundTransactionStatus({
+  propertyId,
+  purchaseIndex,
+  hash,
+  onSuccess,
+}: {
+  propertyId: bigint;
+  purchaseIndex: number;
+  hash: `0x${string}`;
+  onSuccess: () => void;
+}) {
+  const { isLoading, isSuccess, isError } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  useEffect(() => {
+    if (isSuccess) {
+      onSuccess();
+    }
+  }, [isSuccess, onSuccess]);
+
+  if (isLoading) {
+    return (
+      <div style={{
+        marginTop: '8px',
+        padding: '8px 12px',
+        borderRadius: '6px',
+        background: 'rgba(59, 130, 246, 0.1)',
+        color: '#1d4ed8',
+        fontSize: '12px',
+      }}>
+        退款确认中... 交易哈希: {hash.slice(0, 10)}...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div style={{
+        marginTop: '8px',
+        padding: '8px 12px',
+        borderRadius: '6px',
+        background: 'rgba(239, 68, 68, 0.1)',
+        color: '#dc2626',
+        fontSize: '12px',
+      }}>
+        ✗ 退款交易失败: {hash.slice(0, 10)}... 请重试
+      </div>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <div style={{
+        marginTop: '8px',
+        padding: '8px 12px',
+        borderRadius: '6px',
+        background: 'rgba(16, 185, 129, 0.1)',
+        color: '#059669',
+        fontSize: '12px',
+        fontWeight: 600,
+      }}>
+        ✓ 退款成功！份额已销毁，资金已返还。交易哈希: {hash.slice(0, 10)}...
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export default function DistributionPage() {
@@ -175,9 +535,6 @@ export default function DistributionPage() {
 
   // 获取所有房产（用于显示收益池）
   const { properties: allProperties, isLoading: isLoadingAllProperties } = useAllProperties();
-  
-  // 获取发布者的房产（用于发布者充值收益）
-  const { properties: publisherProperties } = usePublisherProperties();
 
   // 获取代币合约地址
   const myTokenAddress = useMemo(() => {
@@ -202,57 +559,35 @@ export default function DistributionPage() {
   });
   const userBalancesData = userBalancesQuery.data as any[] | undefined;
 
-  // 过滤房产：只显示自己发布的或已购买的
-  const filteredProperties = useMemo(() => {
-    if (!address) return [];
+  // 过滤索引：只保留已购买的房产索引（持有份额 > 0）
+  // 发布者和管理员也需要持有份额才能看到收益信息
+  const filteredIndexes = useMemo(() => {
+    if (!address) return [] as number[];
     
-    return allProperties.filter((property, index) => {
-      // 检查是否是发布者
-      const isPublisher = property.publisher.toLowerCase() === address.toLowerCase();
-      if (isPublisher) return true;
-      
-      // 检查是否持有该房产的代币
+    const indexes: number[] = [];
+
+    allProperties.forEach((property, index) => {
+      // 检查用户是否持有份额（无论是发布者、管理员还是普通用户，都需要持有份额）
       const balanceItem = userBalancesData?.[index];
       if (balanceItem?.status === 'success') {
         const balance = balanceItem.result as bigint | undefined;
-        if (balance && balance > 0n) return true;
+        if (balance && balance > 0n) {
+          indexes.push(index);
       }
-      
-      return false;
+      }
     });
+
+    return indexes;
   }, [allProperties, address, userBalancesData]);
 
+  // 根据过滤后的索引得到房产列表
+  const filteredProperties = useMemo(() => {
+    return filteredIndexes.map((i) => allProperties[i]);
+  }, [allProperties, filteredIndexes]);
+
   // 收益管理相关状态
-  const [yieldFormExpanded, setYieldFormExpanded] = useState<Record<number, boolean>>({});
-  const [yieldDepositForms, setYieldDepositForms] = useState<Record<number, { amount: string }>>({});
-  const [yieldDepositHashes, setYieldDepositHashes] = useState<Record<number, `0x${string}` | null>>({});
   const [yieldClaimHashes, setYieldClaimHashes] = useState<Record<number, `0x${string}` | null>>({});
   const [yieldStatus, setYieldStatus] = useState<Record<number, string | null>>({});
-
-  // 获取测试代币地址
-  const testTokenAddress = useMemo(() => {
-    const key = chainId === 31337 || chainId === 1337 ? 'localhost' : undefined;
-    return key ? contracts[key]?.testToken : undefined;
-  }, [chainId]);
-
-  // 查询收益代币地址
-  // @ts-ignore - 避免深度类型推断问题
-  const { data: rewardTokenAddress } = useReadContract({
-    address: addresses?.realEstateLogic,
-    abi: realEstateLogicAbi as any,
-    functionName: 'rewardToken',
-    query: { enabled: !!addresses?.realEstateLogic },
-  } as any);
-
-  // 查询用户测试代币余额
-  // @ts-ignore - 避免深度类型推断问题
-  const { data: testTokenBalance } = useReadContract({
-    address: rewardTokenAddress || testTokenAddress,
-    abi: erc20Abi as any,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!(rewardTokenAddress || testTokenAddress) && !!address },
-  } as any);
 
   // 查询过滤后房产的收益池总额
   const yieldPoolQueries = useMemo(() => {
@@ -288,77 +623,23 @@ export default function DistributionPage() {
   });
   const claimableYieldsData = claimableYieldsQuery.data as any[] | undefined;
 
-  // 查询年化收益（用于计算建议充值金额）
-  const annualYieldQueries = useMemo(() => {
-    if (!addresses?.realEstateLogic || filteredProperties.length === 0) return [];
+  // 查询已提取收益（当前用户）
+  const claimedYieldQueries = useMemo(() => {
+    if (!addresses?.realEstateLogic || filteredProperties.length === 0 || !address) return [];
     return filteredProperties.map((property) => ({
       address: addresses.realEstateLogic as `0x${string}`,
       abi: realEstateLogicAbi,
-      functionName: 'calculateAnnualYield' as const,
-      args: [property.propertyId] as [bigint],
+      functionName: 'claimedRewards' as const,
+      args: [property.propertyId, address] as [bigint, `0x${string}`],
     }));
-  }, [addresses?.realEstateLogic, filteredProperties]);
+  }, [addresses?.realEstateLogic, filteredProperties, address]);
 
-  const annualYieldsQuery = useReadContracts({
-    contracts: annualYieldQueries,
-    query: { enabled: annualYieldQueries.length > 0 },
+  const claimedYieldsQuery = useReadContracts({
+    contracts: claimedYieldQueries,
+    query: { enabled: claimedYieldQueries.length > 0 },
   });
-  const annualYieldsData = annualYieldsQuery.data as any[] | undefined;
+  const claimedYieldsData = claimedYieldsQuery.data as any[] | undefined;
 
-  // 处理充值收益
-  const handleDepositYield = async (e: React.FormEvent, propertyId: bigint) => {
-    e.preventDefault();
-    if (!addresses || !rewardTokenAddress) return;
-
-    const form = yieldDepositForms[Number(propertyId)];
-    if (!form || !form.amount) {
-      setYieldStatus(prev => ({ ...prev, [Number(propertyId)]: '请输入充值金额' }));
-      return;
-    }
-
-    const amount = parseEther(form.amount);
-    if (amount <= 0n) {
-      setYieldStatus(prev => ({ ...prev, [Number(propertyId)]: '金额必须大于 0' }));
-      return;
-    }
-
-    try {
-      setYieldStatus(prev => ({ ...prev, [Number(propertyId)]: '授权中...' }));
-
-      // 1. 先授权
-      const approveHash = await writeContractAsync({
-        address: rewardTokenAddress as `0x${string}`,
-        abi: erc20Abi as any,
-        functionName: 'approve',
-        args: [addresses.realEstateLogic, amount],
-      } as any);
-
-      await new Promise(resolve => setTimeout(resolve, 2000)); // 等待确认
-
-      // 2. 充值收益
-      setYieldStatus(prev => ({ ...prev, [Number(propertyId)]: '充值中...' }));
-      // @ts-ignore - 避免深度类型推断问题
-      const hash = await writeContractAsync({
-        address: addresses.realEstateLogic,
-        abi: realEstateLogicAbi as any,
-        functionName: 'depositYield',
-        args: [propertyId, amount],
-      } as any);
-
-      setYieldDepositHashes(prev => ({ ...prev, [Number(propertyId)]: hash }));
-      setYieldStatus(prev => ({ ...prev, [Number(propertyId)]: `充值成功：${hash}` }));
-
-      // 清空表单
-      setYieldDepositForms(prev => ({
-        ...prev,
-        [Number(propertyId)]: { amount: '' },
-      }));
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '充值失败';
-      setYieldStatus(prev => ({ ...prev, [Number(propertyId)]: errorMsg }));
-      console.error('充值收益失败:', err);
-    }
-  };
 
   // 处理提取收益
   const handleClaimYield = async (propertyId: bigint) => {
@@ -443,14 +724,43 @@ export default function DistributionPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {filteredProperties.map((property, index) => {
                   const propertyIdNum = Number(property.propertyId);
-                  const isExpanded = yieldFormExpanded[propertyIdNum] || false;
                   const isPublisher = property.publisher.toLowerCase() === address?.toLowerCase();
+                  const originalIndex = filteredIndexes[index];
                   
                   // 获取收益池数据
                   const yieldPoolItem = yieldPoolsData?.[index];
                   const claimableYieldItem = claimableYieldsData?.[index];
+                  const claimedYieldItem = claimedYieldsData?.[index];
+                  const balanceItem = userBalancesData?.[originalIndex];
+
                   const yieldPool = yieldPoolItem?.status === 'success' ? (yieldPoolItem as any).result : undefined;
                   const claimableYield = claimableYieldItem?.status === 'success' ? (claimableYieldItem as any).result : undefined;
+                  const claimedYield = claimedYieldItem?.status === 'success' ? (claimedYieldItem as any).result : undefined;
+                  const userShares =
+                    balanceItem?.status === 'success'
+                      ? BigInt((balanceItem as any).result?.toString?.() ?? '0')
+                      : BigInt(0);
+
+                  const unitPrice = property.unitPriceWei || BigInt(0);
+                  const annualYieldBps = property.annualYieldBps || BigInt(0);
+
+                  // 预计年化收益 = 持有份额 × 单价 × 年化收益率
+                  const estimatedAnnualYield =
+                    userShares > 0n && unitPrice > 0n && annualYieldBps > 0n
+                      ? (userShares * unitPrice * annualYieldBps) / BigInt(10000)
+                      : BigInt(0);
+
+                  // 收益池占比 = (持有份额 / 最大发行量) × 100%
+                  const totalShares = property.maxSupply > 0n ? property.maxSupply : property.totalSupply;
+                  const poolSharePercent =
+                    totalShares > 0n && userShares > 0n
+                      ? (Number(userShares) / Number(totalShares)) * 100
+                      : 0;
+
+                  // 累计应得收益 = 已提取 + 当前可提取
+                  const totalEarnedYield =
+                    (claimedYield ? BigInt(claimedYield.toString()) : BigInt(0)) +
+                    (claimableYield ? BigInt(claimableYield.toString()) : BigInt(0));
 
                   return (
                     <div key={propertyIdNum} style={cardStyle}>
@@ -464,280 +774,333 @@ export default function DistributionPage() {
                           </p>
                           
                           {/* 收益池信息卡片 */}
-                          <div style={{
-                            padding: '16px',
-                            borderRadius: '10px',
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          {(() => {
+                            // 计算收益锁定状态
+                            const now = BigInt(Math.floor(Date.now() / 1000));
+                            const createTime = property.createTime || BigInt(0);
+                            const oneYearInSeconds = BigInt(365 * 24 * 60 * 60);
+                            const lockEndTime = createTime + oneYearInSeconds;
+                            const isProjectEnded = property.projectEndTime > 0n && now >= property.projectEndTime;
+                            const oneYearPassed = createTime > 0n && now >= lockEndTime;
+                            const isYieldLocked = !oneYearPassed && !isProjectEnded;
+                            const daysRemaining = isYieldLocked && lockEndTime > now 
+                              ? Math.floor(Number(lockEndTime - now) / (24 * 60 * 60)) 
+                              : 0;
+
+                            return (
+                              <div
+                                style={{
+                                  padding: '20px',
+                                  borderRadius: '12px',
+                                  background: isYieldLocked
+                                    ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                                    : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                             color: '#fff',
                             marginBottom: '16px',
-                          }}>
-                            <h5 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 600, opacity: 0.9 }}>
-                              收益池信息
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                }}
+                              >
+                                <h5
+                                  style={{
+                                    margin: '0 0 16px',
+                                    fontSize: '16px',
+                                    fontWeight: 600,
+                                    opacity: 0.95,
+                                  }}
+                                >
+                                  💰 收益池信息
                             </h5>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                              <div>
-                                <div style={{ opacity: 0.8, marginBottom: '4px' }}>收益池总额</div>
-                                <div style={{ fontSize: '18px', fontWeight: 600 }}>
+
+                                {/* 主要指标 */}
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '16px',
+                                    marginBottom: '16px',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      padding: '12px',
+                                      borderRadius: '8px',
+                                      background: 'rgba(255, 255, 255, 0.15)',
+                                      backdropFilter: 'blur(10px)',
+                                    }}
+                                  >
+                                    <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '6px' }}>
+                                      收益池总额
+                                    </div>
+                                    <div style={{ fontSize: '20px', fontWeight: 700 }}>
                                   {yieldPool ? formatEther(yieldPool as bigint) : '0'} TUSDC
                                 </div>
                               </div>
-                              <div>
-                                <div style={{ opacity: 0.8, marginBottom: '4px' }}>你可提取</div>
-                                <div style={{ fontSize: '18px', fontWeight: 600 }}>
+                                  <div
+                                    style={{
+                                      padding: '12px',
+                                      borderRadius: '8px',
+                                      background: 'rgba(255, 255, 255, 0.15)',
+                                      backdropFilter: 'blur(10px)',
+                                    }}
+                                  >
+                                    <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '6px' }}>
+                                      你可提取
+                                    </div>
+                                    <div style={{ fontSize: '20px', fontWeight: 700 }}>
                                   {claimableYield ? formatEther(claimableYield as bigint) : '0'} TUSDC
                                 </div>
                               </div>
                             </div>
-                            {claimableYield && claimableYield > 0n && (
-                              <button
-                                onClick={() => handleClaimYield(property.propertyId)}
-                                disabled={isPending}
+
+                                {/* 详细指标 */}
+                                <div
                                 style={{
-                                  marginTop: '12px',
-                                  padding: '8px 16px',
+                                    padding: '12px',
                                   borderRadius: '8px',
-                                  border: 'none',
-                                  background: 'rgba(255, 255, 255, 0.2)',
-                                  color: '#fff',
-                                  cursor: isPending ? 'not-allowed' : 'pointer',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    marginBottom: '16px',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: 'repeat(3, 1fr)',
+                                      gap: '12px',
                                   fontSize: '13px',
-                                  fontWeight: 500,
-                                  width: '100%',
-                                }}
-                              >
-                                {isPending ? '提取中...' : '提取收益'}
-                              </button>
-                            )}
+                                    }}
+                                  >
+                                    <div>
+                                      <div style={{ opacity: 0.85, marginBottom: '4px', fontSize: '11px' }}>
+                                        持有份额
+                                      </div>
+                                      <div style={{ fontSize: '16px', fontWeight: 600 }}>
+                                        {userShares.toString()} 份
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={{ opacity: 0.85, marginBottom: '4px', fontSize: '11px' }}>
+                                        预计年化收益
+                                      </div>
+                                      <div style={{ fontSize: '16px', fontWeight: 600 }}>
+                                        {estimatedAnnualYield > 0n ? formatEther(estimatedAnnualYield) : '0'} TUSDC
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={{ opacity: 0.85, marginBottom: '4px', fontSize: '11px' }}>
+                                        收益池占比
+                                      </div>
+                                      <div style={{ fontSize: '16px', fontWeight: 600 }}>
+                                        {poolSharePercent > 0 ? `${poolSharePercent.toFixed(2)}%` : '0%'}
+                                      </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* 发布者充值收益表单 */}
-                      {isPublisher && (
-                        <div style={{
-                          marginTop: '16px',
-                          paddingTop: '16px',
-                          borderTop: '1px solid #e2e8f0',
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>发布者充值收益</h4>
-                            <button
-                              onClick={() => setYieldFormExpanded(prev => ({ ...prev, [propertyIdNum]: !isExpanded }))}
+                                {/* 额外信息 */}
+                                <div
                               style={{
-                                padding: '6px 12px',
+                                    padding: '12px',
                                 borderRadius: '8px',
-                                border: '1px solid #cbd5e1',
-                                background: '#fff',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                color: '#4338ca',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    marginBottom: '16px',
+                                    fontSize: '12px',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: 'repeat(2, 1fr)',
+                                      gap: '12px',
+                                      marginBottom: '8px',
                               }}
                             >
-                              {isExpanded ? '收起' : '展开充值表单'}
-                            </button>
+                                    <div>
+                                      <div style={{ opacity: 0.85, marginBottom: '4px', fontSize: '11px' }}>
+                                        年化收益率
                           </div>
-
-                          {isExpanded && (() => {
-                            // 计算建议充值金额
-                            const annualYieldItem = annualYieldsData && index < annualYieldsData.length 
-                              ? annualYieldsData[index] 
-                              : undefined;
-                            const annualYield = annualYieldItem?.status === 'success' 
-                              ? (annualYieldItem as any).result as bigint 
-                              : undefined;
-                            
-                            // 计算基于时间的建议金额
-                            const now = BigInt(Math.floor(Date.now() / 1000));
-                            const lastTimestamp = property.lastYieldTimestamp || BigInt(0);
-                            const timeSinceLastDeposit = lastTimestamp > 0n 
-                              ? now - lastTimestamp 
-                              : BigInt(0);
-                            
-                            // 计算建议金额（基于年化收益率和时间间隔）
-                            const calculateSuggestedAmount = (months: number) => {
-                              if (!annualYield || annualYield === 0n) return null;
-                              // 年化收益 × (月数 / 12)
-                              const suggested = (annualYield * BigInt(months)) / BigInt(12);
-                              return formatEther(suggested);
-                            };
-
-                            // 基于实际时间间隔计算建议金额
-                            const calculateTimeBasedAmount = () => {
-                              if (!annualYield || annualYield === 0n || timeSinceLastDeposit === 0n) return null;
-                              // 年化收益 × (时间间隔秒数 / 一年秒数)
-                              const secondsPerYear = BigInt(365 * 24 * 60 * 60);
-                              const suggested = (annualYield * timeSinceLastDeposit) / secondsPerYear;
-                              return formatEther(suggested);
-                            };
-
-                            const timeBasedAmount = calculateTimeBasedAmount();
-                            const monthlyAmount = calculateSuggestedAmount(1);
-                            const quarterlyAmount = calculateSuggestedAmount(3);
-                            const annualAmount = annualYield ? formatEther(annualYield) : null;
-
-                            return (
-                            <form
-                              onSubmit={(e) => handleDepositYield(e, property.propertyId)}
+                                      <div style={{ fontSize: '15px', fontWeight: 600 }}>
+                                        {annualYieldBps > 0n
+                                          ? `${(Number(annualYieldBps) / 100).toFixed(2)}%`
+                                          : '未设置'}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={{ opacity: 0.85, marginBottom: '4px', fontSize: '11px' }}>
+                                        已提取收益
+                                      </div>
+                                      <div style={{ fontSize: '15px', fontWeight: 600 }}>
+                                        {claimedYield ? formatEther(BigInt(claimedYield.toString())) : '0'} TUSDC
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div
+                                    style={{
+                                      marginTop: '8px',
+                                      paddingTop: '8px',
+                                      borderTop: '1px solid rgba(255,255,255,0.2)',
+                                    }}
+                                  >
+                                    <div
                               style={{
                                 display: 'flex',
-                                flexDirection: 'column',
-                                gap: '12px',
+                                        justifyContent: 'space-between',
+                                        marginBottom: '4px',
                               }}
                             >
-                                {/* 建议充值金额卡片 */}
-                                {(annualYield && annualYield > 0n) && (
-                                  <div style={{
-                                    padding: '12px',
-                                    borderRadius: '8px',
-                                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                    color: '#fff',
-                                  }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', opacity: 0.9 }}>
-                                      💡 建议充值金额
+                                      <span>总发行量:</span>
+                                      <span style={{ fontWeight: 600 }}>
+                                        {property.totalSupply.toString()} /{' '}
+                                        {property.maxSupply > 0n ? property.maxSupply.toString() : '∞'} 份
+                                      </span>
                                     </div>
-                                    <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '8px' }}>
-                                      年化收益: {annualAmount} TUSDC/年
-                                      {property.annualYieldBps > 0n && (
-                                        <span> ({(Number(property.annualYieldBps) / 100).toFixed(2)}%)</span>
-                                      )}
-                                    </div>
-                                    {timeSinceLastDeposit > 0n && timeBasedAmount && (
-                                      <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '8px' }}>
-                                        距离上次充值: {Math.floor(Number(timeSinceLastDeposit) / (24 * 60 * 60))} 天
-                                        <br />
-                                        建议充值: <strong>{timeBasedAmount} TUSDC</strong>
+                                    {totalEarnedYield > 0n && (
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          marginTop: '4px',
+                                        }}
+                                      >
+                                        <span>累计应得收益:</span>
+                                        <span style={{ fontWeight: 600 }}>
+                                          {formatEther(totalEarnedYield)} TUSDC
+                                        </span>
                                       </div>
-                                    )}
-                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
-                                      {monthlyAmount && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setYieldDepositForms(prev => ({
-                                            ...prev,
-                                            [propertyIdNum]: { amount: monthlyAmount },
-                                          }))}
-                                          style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid rgba(255,255,255,0.3)',
-                                            background: 'rgba(255,255,255,0.15)',
-                                            color: '#fff',
-                                            cursor: 'pointer',
-                                            fontSize: '12px',
-                                            fontWeight: 500,
-                                          }}
-                                        >
-                                          1个月 ({monthlyAmount})
-                                        </button>
-                                      )}
-                                      {quarterlyAmount && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setYieldDepositForms(prev => ({
-                                            ...prev,
-                                            [propertyIdNum]: { amount: quarterlyAmount },
-                                          }))}
-                                          style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid rgba(255,255,255,0.3)',
-                                            background: 'rgba(255,255,255,0.15)',
-                                            color: '#fff',
-                                            cursor: 'pointer',
-                                            fontSize: '12px',
-                                            fontWeight: 500,
-                                          }}
-                                        >
-                                          3个月 ({quarterlyAmount})
-                                        </button>
-                                      )}
-                                      {annualAmount && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setYieldDepositForms(prev => ({
-                                            ...prev,
-                                            [propertyIdNum]: { amount: annualAmount },
-                                          }))}
-                                          style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid rgba(255,255,255,0.3)',
-                                            background: 'rgba(255,255,255,0.15)',
-                                            color: '#fff',
-                                            cursor: 'pointer',
-                                            fontSize: '12px',
-                                            fontWeight: 500,
-                                          }}
-                                        >
-                                          1年 ({annualAmount})
-                                        </button>
-                                      )}
-                                      {timeBasedAmount && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setYieldDepositForms(prev => ({
-                                            ...prev,
-                                            [propertyIdNum]: { amount: timeBasedAmount },
-                                          }))}
-                                          style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '6px',
-                                            border: '1px solid rgba(255,255,255,0.3)',
-                                            background: 'rgba(255,255,255,0.25)',
-                                            color: '#fff',
-                                            cursor: 'pointer',
-                                            fontSize: '12px',
-                                            fontWeight: 600,
-                                          }}
-                                        >
-                                          按时间 ({timeBasedAmount})
-                                        </button>
                                       )}
                                     </div>
+                                      </div>
+
+                                {/* 收益锁定提示 */}
+                                {isYieldLocked && (
+                                  <div
+                                          style={{
+                                      marginTop: '12px',
+                                      padding: '12px',
+                                      borderRadius: '8px',
+                                      background: 'rgba(255, 255, 255, 0.2)',
+                                            fontSize: '12px',
+                                      lineHeight: 1.6,
+                                          }}
+                                        >
+                                    <div
+                                          style={{
+                                        fontWeight: 600,
+                                        marginBottom: '6px',
+                                        fontSize: '13px',
+                                      }}
+                                    >
+                                      ⏳ 收益已锁定
+                                    </div>
+                                    <div style={{ opacity: 0.95 }}>
+                                      {isProjectEnded
+                                        ? '项目已结束，可立即提取'
+                                        : daysRemaining > 0
+                                        ? `还需等待 ${daysRemaining} 天才能提取收益（或等待项目结束）`
+                                        : '收益将在项目创建后一年解锁'}
+                                    </div>
+                                    {lockEndTime > now && (
+                                      <div
+                                        style={{
+                                          marginTop: '8px',
+                                          opacity: 0.85,
+                                          fontSize: '11px',
+                                          }}
+                                        >
+                                        解锁时间:{' '}
+                                        {new Date(Number(lockEndTime) * 1000).toLocaleString('zh-CN')}
+                                      </div>
+                                      )}
                                   </div>
                                 )}
 
-                              <div>
-                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                                  充值收益金额 (TUSDC) *
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.000001"
-                                  value={yieldDepositForms[propertyIdNum]?.amount || ''}
-                                  onChange={(e) => setYieldDepositForms(prev => ({
-                                    ...prev,
-                                    [propertyIdNum]: { amount: e.target.value },
-                                  }))}
-                                    placeholder={timeBasedAmount ? `建议: ${timeBasedAmount}` : "如：1000"}
-                                  required
-                                  style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #cbd5e1',
-                                    fontSize: '14px',
-                                  }}
-                                />
-                                {testTokenBalance && (
-                                  <small style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                                    你的余额: {formatEther(testTokenBalance as bigint)} TUSDC
-                                  </small>
+                                {/* 解锁提示 */}
+                                {!isYieldLocked && (oneYearPassed || isProjectEnded) && (
+                                  <div
+                                          style={{
+                                      marginTop: '12px',
+                                      padding: '10px',
+                                      borderRadius: '8px',
+                                      background: 'rgba(16, 185, 129, 0.3)',
+                                            fontSize: '12px',
+                                      textAlign: 'center',
+                                            fontWeight: 500,
+                                          }}
+                                        >
+                                    ✓ 收益已解锁，可以提取
+                                    {oneYearPassed && (
+                                      <div
+                                        style={{
+                                          fontSize: '11px',
+                                          opacity: 0.9,
+                                          marginTop: '4px',
+                                        }}
+                                      >
+                                        （项目创建已满一年）
+                                      </div>
+                                    )}
+                                    {isProjectEnded && !oneYearPassed && (
+                                      <div
+                                          style={{
+                                          fontSize: '11px',
+                                          opacity: 0.9,
+                                          marginTop: '4px',
+                                          }}
+                                        >
+                                        （项目已结束）
+                                    </div>
+                                    )}
+                                  </div>
                                 )}
-                                  {!annualYield || annualYield === 0n ? (
-                                    <small style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px', display: 'block' }}>
-                                      ⚠️ 未设置年化收益率，无法计算建议金额
-                                    </small>
-                                  ) : null}
+
+                                {/* 提取按钮 */}
+                                {claimableYield && claimableYield > 0n && (
+                                  <button
+                                    onClick={() => handleClaimYield(property.propertyId)}
+                                    disabled={isPending || isYieldLocked}
+                                  style={{
+                                      marginTop: '16px',
+                                      padding: '12px 24px',
+                                    borderRadius: '8px',
+                                      border: 'none',
+                                      background: isYieldLocked
+                                        ? 'rgba(255, 255, 255, 0.15)'
+                                        : 'rgba(255, 255, 255, 0.25)',
+                                      color: '#fff',
+                                      cursor:
+                                        isPending || isYieldLocked ? 'not-allowed' : 'pointer',
+                                    fontSize: '14px',
+                                      fontWeight: 600,
+                                      width: '100%',
+                                      opacity: isPending || isYieldLocked ? 0.6 : 1,
+                                      transition: 'all 0.2s',
+                                    }}
+                                    title={
+                                      isYieldLocked
+                                        ? `收益已锁定，还需等待 ${daysRemaining} 天或项目结束`
+                                        : ''
+                                    }
+                                  >
+                                    {isPending
+                                      ? '⏳ 提取中...'
+                                      : isYieldLocked
+                                      ? '🔒 收益已锁定'
+                                      : '💰 提取收益'}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
                               </div>
 
-                              {yieldDepositHashes[propertyIdNum] && (
+                      {/* 提取收益交易状态 */}
+                      {yieldClaimHashes[propertyIdNum] && (
+                        <div style={{ marginTop: '12px' }}>
                                 <YieldTransactionStatus
                                   propertyId={propertyIdNum}
-                                  hash={yieldDepositHashes[propertyIdNum]!}
-                                  type="deposit"
+                            hash={yieldClaimHashes[propertyIdNum]!}
                                   onSuccess={() => {
-                                    setYieldDepositHashes(prev => {
+                              setYieldClaimHashes(prev => {
                                       const newState = { ...prev };
                                       delete newState[propertyIdNum];
                                       return newState;
@@ -747,92 +1110,179 @@ export default function DistributionPage() {
                                       delete newState[propertyIdNum];
                                       return newState;
                                     });
-                                    setYieldDepositForms(prev => ({
-                                      ...prev,
-                                      [propertyIdNum]: { amount: '' },
-                                    }));
-                                  }}
-                                />
-                              )}
-
-                              {yieldStatus[propertyIdNum] && !yieldDepositHashes[propertyIdNum] && (
-                                <div style={{
-                                  padding: '12px',
-                                  borderRadius: '8px',
-                                  background: 'rgba(239, 68, 68, 0.1)',
-                                  color: '#dc2626',
-                                  fontSize: '14px',
-                                }}>
-                                  {yieldStatus[propertyIdNum]}
-                                </div>
-                              )}
-
-                              <button
-                                type="submit"
-                                disabled={isPending || !rewardTokenAddress}
-                                style={{
-                                  padding: '10px 16px',
-                                  borderRadius: '8px',
-                                  border: 'none',
-                                  background: '#10b981',
-                                  color: '#fff',
-                                  cursor: isPending ? 'not-allowed' : 'pointer',
-                                  fontSize: '14px',
-                                  fontWeight: 500,
-                                  opacity: isPending ? 0.7 : 1,
-                                }}
-                              >
-                                {isPending ? '处理中...' : '充值收益'}
-                              </button>
-                            </form>
-                            );
-                          })()}
-
-                          {!rewardTokenAddress && (
-                            <div style={{
-                              padding: '12px',
-                              borderRadius: '8px',
-                              background: 'rgba(245, 158, 11, 0.1)',
-                              color: '#92400e',
-                              fontSize: '14px',
-                              marginTop: '12px',
-                            }}>
-                              ⚠️ 收益代币未设置，请联系管理员配置。
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* 提取收益交易状态 */}
-                      {yieldClaimHashes[propertyIdNum] && (
-                        <div style={{ marginTop: '12px' }}>
-                          <YieldTransactionStatus
-                            propertyId={propertyIdNum}
-                            hash={yieldClaimHashes[propertyIdNum]!}
-                            type="claim"
-                            onSuccess={() => {
-                              setYieldClaimHashes(prev => {
-                                const newState = { ...prev };
-                                delete newState[propertyIdNum];
-                                return newState;
-                              });
-                              setYieldStatus(prev => {
-                                const newState = { ...prev };
-                                delete newState[propertyIdNum];
-                                return newState;
-                              });
                             }}
                           />
                         </div>
                       )}
+
+                      {/* 退款功能 - 对所有持有份额的用户显示（包括发布者和管理员） */}
+                      {address && (
+                        <RefundSection
+                          propertyId={property.propertyId}
+                          property={property}
+                          buyer={address}
+                          logicAddress={addresses?.realEstateLogic}
+                        />
+                      )}
                     </div>
                   );
                 })}
-              </div>
-            )}
+                                </div>
+                              )}
           </>
         )}
       </div>
     </>
+  );
+}
+
+// 退款功能组件
+function RefundSection({
+  propertyId,
+  property,
+  buyer,
+  logicAddress,
+}: {
+  propertyId: bigint;
+  property: any;
+  buyer: string;
+  logicAddress: `0x${string}` | undefined;
+}) {
+  const [refundExpanded, setRefundExpanded] = useState(false);
+  const { purchaseRecords } = usePurchaseRecords(propertyId, buyer, logicAddress);
+
+  if (!logicAddress) return null;
+
+  // 检查用户是否有购买记录
+  const hasRecords = purchaseRecords.length > 0;
+  const activeRecords = purchaseRecords.filter(r => !r.refunded);
+  const refundedRecords = purchaseRecords.filter(r => r.refunded);
+
+  return (
+                        <div style={{
+                          marginTop: '16px',
+                          paddingTop: '16px',
+                          borderTop: '1px solid #e2e8f0',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>退款管理</h4>
+        {hasRecords && (
+                              <button
+            onClick={() => setRefundExpanded(!refundExpanded)}
+                                style={{
+                                padding: '6px 12px',
+                                  borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                background: '#fff',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                color: '#4338ca',
+                                }}
+                              >
+            {refundExpanded ? '收起' : `展开 (${activeRecords.length} 条可退款)`}
+                              </button>
+        )}
+                          </div>
+
+      {!hasRecords ? (
+                            <div style={{
+                              padding: '12px',
+                              borderRadius: '8px',
+          background: 'rgba(148, 163, 184, 0.1)',
+          color: '#64748b',
+                              fontSize: '14px',
+                            }}>
+          您还没有购买过该房产的份额，或所有购买记录已退款。
+                            </div>
+      ) : (
+        <>
+          {/* 统计信息 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+                                gap: '12px',
+            marginBottom: '12px',
+          }}>
+                                  <div style={{
+                                    padding: '12px',
+                                    borderRadius: '8px',
+              background: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid #10b981',
+                                  }}>
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>可退款记录</div>
+              <div style={{ fontSize: '18px', fontWeight: 600, color: '#059669' }}>
+                {activeRecords.length}
+                        </div>
+                                    </div>
+            <div style={{
+              padding: '12px',
+              borderRadius: '8px',
+              background: 'rgba(148, 163, 184, 0.1)',
+              border: '1px solid #cbd5e1',
+            }}>
+              <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>已退款记录</div>
+              <div style={{ fontSize: '18px', fontWeight: 600, color: '#64748b' }}>
+                {refundedRecords.length}
+                                      </div>
+                                    </div>
+                                  </div>
+
+          {/* 购买记录列表 */}
+          {refundExpanded && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {purchaseRecords.map((record, index) => (
+                <RefundStatus
+                  key={index}
+                  propertyId={propertyId}
+                  purchaseIndex={index}
+                  purchaseRecord={record}
+                  property={property}
+                  buyer={buyer}
+                  logicAddress={logicAddress}
+                                />
+              ))}
+
+              {purchaseRecords.length === 0 && (
+                                <div style={{
+                                  padding: '12px',
+                                  borderRadius: '8px',
+                  background: 'rgba(148, 163, 184, 0.1)',
+                  color: '#64748b',
+                                  fontSize: '14px',
+                  textAlign: 'center',
+                                }}>
+                  暂无购买记录
+                        </div>
+                      )}
+              </div>
+            )}
+
+          {/* 提示信息 */}
+                            <div style={{
+            marginTop: '12px',
+                              padding: '12px',
+                              borderRadius: '8px',
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid #3b82f6',
+          }}>
+            <div style={{ fontSize: '12px', color: '#1e40af', lineHeight: 1.6 }}>
+              <strong>退款说明：</strong>
+              <br />
+              • 购买后满 {property.refundLockPeriod ? Math.floor(Number(property.refundLockPeriod) / (24 * 60 * 60)) : 365} 天可申请退款
+              <br />
+              • 项目结束后可立即申请退款
+              <br />
+              • 退款将销毁对应的份额代币并返还购买金额
+              <br />
+              {property.projectEndTime > 0n && (
+                <>
+                  • 项目结束时间: {new Date(Number(property.projectEndTime) * 1000).toLocaleString('zh-CN')}
+          </>
+        )}
+      </div>
+      </div>
+    </>
+        )}
+      </div>
   );
 }

@@ -103,6 +103,20 @@ export const realEstateLogicAbi = [
   },
   {
     type: 'function',
+    name: 'calculateRequiredGuaranteeFund',
+    stateMutability: 'view',
+    inputs: [{ name: 'propertyId', type: 'uint256' }],
+    outputs: [{ name: 'requiredGuaranteeWei', type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'isGuaranteeFundSufficient',
+    stateMutability: 'view',
+    inputs: [{ name: 'propertyId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    type: 'function',
     name: 'buyShares',
     stateMutability: 'nonpayable',
     inputs: [
@@ -150,6 +164,16 @@ export const realEstateLogicAbi = [
     name: 'getYieldPool',
     stateMutability: 'view',
     inputs: [{ name: 'propertyId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'claimedRewards',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'propertyId', type: 'uint256' },
+      { name: 'holder', type: 'address' },
+    ],
     outputs: [{ name: '', type: 'uint256' }],
   },
   {
@@ -224,6 +248,94 @@ export const realEstateLogicAbi = [
     stateMutability: 'view',
     inputs: [{ name: '', type: 'uint256' }],
     outputs: [{ name: '', type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'refundShares',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'propertyId', type: 'uint256' },
+      { name: 'purchaseIndex', type: 'uint256' },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'canRefundShares',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'propertyId', type: 'uint256' },
+      { name: 'buyer', type: 'address' },
+      { name: 'purchaseIndex', type: 'uint256' },
+    ],
+    outputs: [
+      { name: 'canRefund', type: 'bool' },
+      { name: 'reason', type: 'string' },
+      { name: 'refundAmount', type: 'uint256' },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'purchaseRecords',
+    stateMutability: 'view',
+    inputs: [
+      { name: '', type: 'uint256' },
+      { name: '', type: 'address' },
+      { name: '', type: 'uint256' },
+    ],
+    outputs: [
+      { name: 'amount', type: 'uint256' },
+      { name: 'payAmount', type: 'uint256' },
+      { name: 'purchaseTime', type: 'uint256' },
+      { name: 'refunded', type: 'bool' },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'getPurchaseRecordCount',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'propertyId', type: 'uint256' },
+      { name: 'buyer', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'setProjectEndTime',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'propertyId', type: 'uint256' },
+      { name: 'endTime', type: 'uint256' },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'setRefundLockPeriod',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'propertyId', type: 'uint256' },
+      { name: 'period', type: 'uint256' },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'withdrawEscrow',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'propertyId', type: 'uint256' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'escrowPools',
+    stateMutability: 'view',
+    inputs: [{ name: '', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint256' }],
   },
 ] as const;
 
@@ -319,6 +431,9 @@ export const realEstateStorageAbi = [
           { name: 'unitPriceWei', type: 'uint256' },
           { name: 'annualYieldBps', type: 'uint256' },
           { name: 'lastYieldTimestamp', type: 'uint256' },
+          { name: 'createTime', type: 'uint256' },
+          { name: 'projectEndTime', type: 'uint256' },
+          { name: 'refundLockPeriod', type: 'uint256' },
         ],
         name: '',
         type: 'tuple',
@@ -381,6 +496,17 @@ export const erc1155Abi = [
       { name: 'operator', type: 'address' },
     ],
     outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    type: 'function',
+    name: 'burn',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'account', type: 'address' },
+      { name: 'id', type: 'uint256' },
+      { name: 'value', type: 'uint256' },
+    ],
+    outputs: [],
   },
 ] as const;
 

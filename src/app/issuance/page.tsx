@@ -2,203 +2,15 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { keccak256, toBytes, parseEther } from 'viem';
+import { keccak256, toBytes, parseEther, formatEther } from 'viem';
 import { isAddress } from 'viem';
 import Breadcrumb from '../components/layout/Breadcrumb';
 import { contracts, SupportedNetwork } from '../../contracts/addresses';
-import { realEstateLogicAbi } from '../../contracts/abis';
+import { realEstateLogicAbi, erc20Abi } from '../../contracts/abis';
 import { useIPFS } from '../../hooks/useIPFS';
 import type { PropertyMetadataInput } from '../../services/ipfs/metadata';
 import { REGIONS, PROPERTY_TYPES, type Region, type PropertyType } from '../../constants/assets';
 import { usePublisherProperties, type PublisherProperty } from '../../hooks/usePublisherProperties';
-
-// 铸造计算信息卡片
-function MintingCalculationCard({ 
-  property, 
-  amount 
-}: { 
-  property: PublisherProperty; 
-  amount: number;
-}) {
-  // 优先使用链上数据，其次使用 IPFS 数据
-  const unitPrice = property.unitPriceWei > 0n 
-    ? Number(property.unitPriceWei) / 1e18 
-    : property.unitPriceUSD || 0;
-  const yieldPercent = property.annualYieldBps > 0n
-    ? Number(property.annualYieldBps) / 100
-    : property.yieldPercent || 0;
-
-  const totalValue = unitPrice * amount;
-  const annualReturn = totalValue * (yieldPercent / 100);
-
-  if (unitPrice === 0 && yieldPercent === 0) {
-    return null;
-  }
-
-  return (
-    <div style={{
-      padding: '16px',
-      borderRadius: '10px',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: '#fff',
-      marginBottom: '16px',
-    }}>
-      <h5 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 600, opacity: 0.9 }}>
-        预计信息
-      </h5>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-        {unitPrice > 0 && (
-          <div>
-            <div style={{ opacity: 0.8, marginBottom: '4px' }}>预计总价值</div>
-            <div style={{ fontSize: '18px', fontWeight: 600 }}>
-              {unitPrice >= 1 ? `$${totalValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : `${totalValue.toFixed(6)} ETH`}
-            </div>
-          </div>
-        )}
-        {yieldPercent > 0 && (
-          <div>
-            <div style={{ opacity: 0.8, marginBottom: '4px' }}>预计年化收益</div>
-            <div style={{ fontSize: '18px', fontWeight: 600 }}>
-              {unitPrice >= 1 ? `$${annualReturn.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : `${annualReturn.toFixed(6)} ETH`}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// 铸造建议组件
-function MintingRecommendation({ 
-  property, 
-  currentAmount 
-}: { 
-  property: PublisherProperty; 
-  currentAmount: number;
-}) {
-  const availableToMint = property.maxSupply > 0n 
-    ? Number(property.maxSupply - property.totalSupply) 
-    : Infinity;
-  const isFirstMint = property.totalSupply === 0n;
-  const mintedPercentage = property.maxSupply > 0n 
-    ? (Number(property.totalSupply) / Number(property.maxSupply)) * 100 
-    : 0;
-
-  let recommendation: { type: 'info' | 'warning' | 'success'; message: string } | null = null;
-
-  if (isFirstMint && currentAmount > 100) {
-    recommendation = {
-      type: 'info',
-      message: '💡 首次铸造建议：建议先铸造少量份额（10-100）进行测试，验证流程后再批量铸造。',
-    };
-  } else if (currentAmount > availableToMint) {
-    recommendation = {
-      type: 'warning',
-      message: `⚠️ 铸造数量超过剩余可发行量（${availableToMint}），请调整数量。`,
-    };
-  } else if (currentAmount > 0 && currentAmount <= 10 && !isFirstMint) {
-    recommendation = {
-      type: 'info',
-      message: '💡 建议：小额铸造适合测试，如需批量发行可增加数量。',
-    };
-  } else if (mintedPercentage > 80 && currentAmount > 0) {
-    recommendation = {
-      type: 'warning',
-      message: `⚠️ 已发行 ${mintedPercentage.toFixed(1)}% 的份额，接近上限，请谨慎铸造。`,
-    };
-  }
-
-  if (!recommendation) return null;
-
-  const bgColor = recommendation.type === 'warning' 
-    ? 'rgba(239, 68, 68, 0.1)' 
-    : recommendation.type === 'success'
-    ? 'rgba(16, 185, 129, 0.1)'
-    : 'rgba(59, 130, 246, 0.1)';
-  const textColor = recommendation.type === 'warning'
-    ? '#dc2626'
-    : recommendation.type === 'success'
-    ? '#059669'
-    : '#1d4ed8';
-
-  return (
-    <div style={{
-      padding: '12px',
-      borderRadius: '8px',
-      background: bgColor,
-      color: textColor,
-      fontSize: '13px',
-      lineHeight: '1.5',
-    }}>
-      {recommendation.message}
-    </div>
-  );
-}
-
-// 铸造交易状态组件
-function MintTransactionStatus({ 
-  propertyId, 
-  hash, 
-  onSuccess 
-}: { 
-  propertyId: number; 
-  hash: `0x${string}`; 
-  onSuccess: () => void;
-}) {
-  const { isLoading, isSuccess, isError } = useWaitForTransactionReceipt({
-    hash,
-  });
-
-  useEffect(() => {
-    if (isSuccess) {
-      onSuccess();
-    }
-  }, [isSuccess, onSuccess]);
-
-  if (isLoading) {
-    return (
-      <div style={{
-        padding: '12px',
-        borderRadius: '8px',
-        background: 'rgba(59, 130, 246, 0.1)',
-        color: '#1d4ed8',
-        fontSize: '14px',
-      }}>
-        交易确认中... 哈希: {hash}
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div style={{
-        padding: '12px',
-        borderRadius: '8px',
-        background: 'rgba(239, 68, 68, 0.1)',
-        color: '#dc2626',
-        fontSize: '14px',
-      }}>
-        交易失败: {hash}
-      </div>
-    );
-  }
-
-  if (isSuccess) {
-    return (
-      <div style={{
-        padding: '12px',
-        borderRadius: '8px',
-        background: 'rgba(16, 185, 129, 0.1)',
-        color: '#059669',
-        fontSize: '14px',
-      }}>
-        ✓ 份额铸造成功！交易哈希: {hash}
-      </div>
-    );
-  }
-
-  return null;
-}
 
 function useNetworkAddresses() {
   const chainId = useChainId();
@@ -240,14 +52,71 @@ export default function IssuancePage() {
     hash: createPropertyHash,
   });
 
-  // 铸造份额相关状态
-  const [mintFormExpanded, setMintFormExpanded] = useState<Record<number, boolean>>({});
-  const [mintForms, setMintForms] = useState<Record<number, { to: string; amount: string }>>({});
-  const [mintHashes, setMintHashes] = useState<Record<number, `0x${string}` | null>>({});
-  const [mintStatus, setMintStatus] = useState<Record<number, string | null>>({});
+
+  // 结束项目相关状态
+  const [endProjectHashes, setEndProjectHashes] = useState<Record<number, `0x${string}` | null>>({});
+  const [endProjectStatus, setEndProjectStatus] = useState<Record<number, string | null>>({});
+
+  // 保障金充值相关状态
+  const [guaranteeDepositHashes, setGuaranteeDepositHashes] = useState<Record<number, `0x${string}` | null>>({});
+  const [guaranteeDepositStatus, setGuaranteeDepositStatus] = useState<Record<number, string | null>>({});
+
 
   // 获取发布者的房产列表
   const { properties: publisherProperties, isLoading: isLoadingProperties } = usePublisherProperties();
+
+  // 批量查询所有房产的保障金金额（基于最大供应量：maxSupply × 单价 × 收益率）
+  // 创建一个映射：propertyId -> query index
+  const guaranteeFundQueries = useMemo(() => {
+    if (!addresses?.realEstateLogic || publisherProperties.length === 0) return [];
+    return publisherProperties.map((property) => ({
+      address: addresses.realEstateLogic as `0x${string}`,
+      abi: realEstateLogicAbi,
+      functionName: 'calculateRequiredGuaranteeFund' as const,
+      args: [property.propertyId] as [bigint],
+    }));
+  }, [addresses?.realEstateLogic, publisherProperties]);
+
+  const guaranteeFundsQuery = useReadContracts({
+    contracts: guaranteeFundQueries as any,
+    query: { enabled: guaranteeFundQueries.length > 0 },
+  });
+  const guaranteeFundsData = guaranteeFundsQuery.data as any[] | undefined;
+
+  // 批量查询已存入的保障金金额（从收益池中查询）
+  const depositedGuaranteeQueries = useMemo(() => {
+    if (!addresses?.realEstateLogic || publisherProperties.length === 0) return [];
+    return publisherProperties.map((property) => ({
+      address: addresses.realEstateLogic as `0x${string}`,
+      abi: realEstateLogicAbi,
+      functionName: 'getYieldPool' as const,
+      args: [property.propertyId] as [bigint],
+    }));
+  }, [addresses?.realEstateLogic, publisherProperties]);
+
+  const depositedGuaranteeQuery = useReadContracts({
+    contracts: depositedGuaranteeQueries as any,
+    query: { enabled: depositedGuaranteeQueries.length > 0 },
+  });
+  const depositedGuaranteeData = depositedGuaranteeQuery.data as any[] | undefined;
+
+  // 批量查询保障金是否足够
+  const guaranteeSufficientQueries = useMemo(() => {
+    if (!addresses?.realEstateLogic || publisherProperties.length === 0) return [];
+    return publisherProperties.map((property) => ({
+      address: addresses.realEstateLogic as `0x${string}`,
+      abi: realEstateLogicAbi,
+      functionName: 'isGuaranteeFundSufficient' as const,
+      args: [property.propertyId] as [bigint],
+    }));
+  }, [addresses?.realEstateLogic, publisherProperties]);
+
+  const guaranteeSufficientQuery = useReadContracts({
+    contracts: guaranteeSufficientQueries as any,
+    query: { enabled: guaranteeSufficientQueries.length > 0 },
+  });
+  const guaranteeSufficientData = guaranteeSufficientQuery.data as any[] | undefined;
+
 
   // 检查是否为发布者
   const publisherRoleId = useMemo(() => keccak256(toBytes('PUBLISHER_ROLE')), []);
@@ -390,54 +259,73 @@ export default function IssuancePage() {
     }
   };
 
-  const handleMintShares = async (e: React.FormEvent, propertyId: bigint) => {
-    e.preventDefault();
-    if (!addresses) return;
 
-    const form = mintForms[Number(propertyId)];
-    if (!form || !form.to || !form.amount) {
-      setMintStatus(prev => ({ ...prev, [Number(propertyId)]: '请填写接收地址和数量' }));
+  // 查询收益代币地址
+  // @ts-ignore - 避免深度类型推断问题
+  const { data: rewardTokenAddress } = useReadContract({
+    address: addresses?.realEstateLogic,
+    abi: realEstateLogicAbi as any,
+    functionName: 'rewardToken',
+    query: { enabled: !!addresses?.realEstateLogic && !!isPublisher },
+  } as any);
+
+  // 查询用户测试代币余额（用于保障金充值）
+  const testTokenAddress = useMemo(() => {
+    const key = chainId === 31337 || chainId === 1337 ? 'localhost' : undefined;
+    return key ? contracts[key]?.testToken : undefined;
+  }, [chainId]);
+
+  // @ts-ignore - 避免深度类型推断问题
+  const { data: testTokenBalance } = useReadContract({
+    address: rewardTokenAddress || testTokenAddress,
+    abi: erc20Abi as any,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!(rewardTokenAddress || testTokenAddress) && !!address && !!isPublisher },
+  } as any);
+
+  // 处理充值保障金（固定金额：发行总价 × 收益率）
+  const handleDepositGuaranteeFund = async (propertyId: bigint, guaranteeAmountWei: bigint) => {
+    if (!addresses || !rewardTokenAddress) {
+      setGuaranteeDepositStatus(prev => ({ ...prev, [Number(propertyId)]: '收益代币未设置，请联系管理员配置' }));
       return;
     }
 
-    if (!form.to.startsWith('0x') || form.to.length !== 42) {
-      setMintStatus(prev => ({ ...prev, [Number(propertyId)]: '请输入合法的钱包地址' }));
-      return;
-    }
-
-    const amount = BigInt(form.amount);
-    if (amount <= 0n) {
-      setMintStatus(prev => ({ ...prev, [Number(propertyId)]: '数量必须大于 0' }));
+    if (guaranteeAmountWei <= 0n) {
+      setGuaranteeDepositStatus(prev => ({ ...prev, [Number(propertyId)]: '保障金金额无效' }));
       return;
     }
 
     try {
-      setMintStatus(prev => ({ ...prev, [Number(propertyId)]: '提交交易中...' }));
-      
+      setGuaranteeDepositStatus(prev => ({ ...prev, [Number(propertyId)]: '授权中...' }));
+
+      // 1. 先授权
+      // @ts-ignore - 避免深度类型推断问题
+      const approveHash = await writeContractAsync({
+        address: rewardTokenAddress as `0x${string}`,
+        abi: erc20Abi as any,
+        functionName: 'approve',
+        args: [addresses.realEstateLogic, guaranteeAmountWei],
+      } as any);
+
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 等待确认
+
+      // 2. 充值保障金
+      setGuaranteeDepositStatus(prev => ({ ...prev, [Number(propertyId)]: '充值保障金中...' }));
       // @ts-ignore - 避免深度类型推断问题
       const hash = await writeContractAsync({
         address: addresses.realEstateLogic,
         abi: realEstateLogicAbi as any,
-        functionName: 'mintShares',
-        args: [
-          propertyId,
-          form.to as `0x${string}`,
-          amount,
-        ],
+        functionName: 'depositYield',
+        args: [propertyId, guaranteeAmountWei],
       } as any);
 
-      setMintHashes(prev => ({ ...prev, [Number(propertyId)]: hash }));
-      setMintStatus(prev => ({ ...prev, [Number(propertyId)]: `交易已提交：${hash}` }));
-      
-      // 清空表单
-      setMintForms(prev => ({
-        ...prev,
-        [Number(propertyId)]: { to: '', amount: '' },
-      }));
+      setGuaranteeDepositHashes(prev => ({ ...prev, [Number(propertyId)]: hash }));
+      setGuaranteeDepositStatus(prev => ({ ...prev, [Number(propertyId)]: `充值成功：${hash.slice(0, 10)}...` }));
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '铸造份额失败';
-      setMintStatus(prev => ({ ...prev, [Number(propertyId)]: errorMsg }));
-      console.error('铸造份额失败:', err);
+      const errorMsg = err instanceof Error ? err.message : '充值保障金失败';
+      setGuaranteeDepositStatus(prev => ({ ...prev, [Number(propertyId)]: errorMsg }));
+      console.error('充值保障金失败:', err);
     }
   };
 
@@ -1428,7 +1316,7 @@ export default function IssuancePage() {
                 <div style={cardStyle}>
                   <h3 style={{ marginTop: 0, marginBottom: '12px' }}>我的房产列表</h3>
                   <p style={{ margin: '0 0 16px', color: '#475569', fontSize: '14px' }}>
-                    管理你创建的房产，为它们铸造份额
+                    管理你创建的房产，设置金融参数和保障金
                   </p>
 
                   {isLoadingProperties ? (
@@ -1437,12 +1325,52 @@ export default function IssuancePage() {
                     <p style={{ color: '#64748b' }}>你还没有创建任何房产。请先使用上方的表单创建房产。</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {publisherProperties.map((property) => {
+                      {publisherProperties.map((property, index) => {
                         const propertyIdNum = Number(property.propertyId);
-                        const isExpanded = mintFormExpanded[propertyIdNum] || false;
-                        const mintForm = mintForms[propertyIdNum] || { to: address || '', amount: '' };
-                        const mintHash = mintHashes[propertyIdNum];
-                        const status = mintStatus[propertyIdNum];
+
+                        // 获取保障金金额（从批量查询结果中获取）
+                        // 使用索引匹配（批量查询顺序与 publisherProperties 顺序一致）
+                        const guaranteeFundItem = 
+                          guaranteeFundsData && index < guaranteeFundsData.length
+                            ? guaranteeFundsData[index]
+                            : undefined;
+                        const guaranteeFundWei = 
+                          guaranteeFundItem?.status === 'success' && guaranteeFundItem.result !== undefined && guaranteeFundItem.result !== null
+                            ? BigInt(guaranteeFundItem.result.toString())
+                            : undefined;
+
+                        // 如果合约查询失败，手动计算保障金（基于最大供应量：maxSupply × 单价 × 收益率）
+                        // 基于最大供应量计算保障金要求
+                        let calculatedGuaranteeFundWei: bigint | undefined = undefined;
+                        if (property.unitPriceWei > 0n && property.annualYieldBps > 0n && property.maxSupply > 0n) {
+                          calculatedGuaranteeFundWei = (property.unitPriceWei * property.maxSupply * property.annualYieldBps) / BigInt(10000);
+                        }
+
+                        // 优先使用合约查询结果，其次使用手动计算
+                        const finalGuaranteeFundWei = guaranteeFundWei !== undefined ? guaranteeFundWei : calculatedGuaranteeFundWei;
+                        const guaranteeFundAmount = finalGuaranteeFundWei !== undefined && finalGuaranteeFundWei > 0n 
+                          ? formatEther(finalGuaranteeFundWei) 
+                          : finalGuaranteeFundWei === 0n
+                          ? '0'
+                          : null;
+
+                        // 获取已存入的保障金金额（从收益池中查询）
+                        const depositedItem = 
+                          depositedGuaranteeData && index < depositedGuaranteeData.length
+                            ? depositedGuaranteeData[index]
+                            : undefined;
+                        const depositedGuaranteeWei = 
+                          depositedItem?.status === 'success' && depositedItem.result !== undefined && depositedItem.result !== null
+                            ? BigInt(depositedItem.result.toString())
+                            : 0n;
+
+                        // 获取保障金是否足够的标志
+                        const sufficientItem = 
+                          guaranteeSufficientData && index < guaranteeSufficientData.length
+                            ? guaranteeSufficientData[index]
+                            : undefined;
+                        const isGuaranteeSufficient = 
+                          sufficientItem?.status === 'success' && sufficientItem.result === true;
 
                         return (
                           <div
@@ -1493,23 +1421,17 @@ export default function IssuancePage() {
                                         : '未设置'}
                                     </span>
                                   )}
+                                  {property.projectEndTime > 0n && (
+                                    <span>
+                                      <strong>项目状态：</strong>
+                                      <span style={{ color: '#dc2626' }}>
+                                        已结束 ({new Date(Number(property.projectEndTime) * 1000).toLocaleString('zh-CN')})
+                                      </span>
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                <button
-                                  onClick={() => setMintFormExpanded(prev => ({ ...prev, [propertyIdNum]: !isExpanded }))}
-                                  style={{
-                                    padding: '8px 12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #cbd5e1',
-                                    background: '#fff',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    color: '#4338ca',
-                                  }}
-                                >
-                                  {isExpanded ? '收起' : '铸造份额'}
-                                </button>
                                 {(property.unitPriceWei === 0n || property.annualYieldBps === 0n) && (
                                   <button
                                     onClick={async () => {
@@ -1570,148 +1492,250 @@ export default function IssuancePage() {
                                     ⚙️ 设置参数
                                   </button>
                                 )}
+                                {/* 存入保障金按钮 / 已完成状态 */}
+                                {/* 基于最大供应量计算保障金，需要发布者先存入保障金 */}
+                                {property.unitPriceWei > 0n && property.annualYieldBps > 0n && property.maxSupply > 0n ? (
+                                  isGuaranteeSufficient ? (
+                                    // 已完成状态：显示已完成和已存入金额
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                                      <div style={{
+                                        padding: '8px 12px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #10b981',
+                                        background: '#d1fae5',
+                                        fontSize: '13px',
+                                        color: '#065f46',
+                                        fontWeight: 500,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                      }}>
+                                        <span>✅</span>
+                                        <span>保障金已完成</span>
+                                      </div>
+                                      <div style={{
+                                        fontSize: '12px',
+                                        color: '#059669',
+                                        fontWeight: 500,
+                                      }}>
+                                        已存入: {formatEther(depositedGuaranteeWei)} TUSDC
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    // 未完成状态：显示存入按钮
+                                    <button
+                                      onClick={async () => {
+                                        if (!addresses) return;
+                                        
+                                        // 计算保障金（基于最大供应量：maxSupply × 单价 × 收益率）
+                                        const guaranteeAmount = finalGuaranteeFundWei !== undefined 
+                                          ? finalGuaranteeFundWei 
+                                          : calculatedGuaranteeFundWei !== undefined
+                                          ? calculatedGuaranteeFundWei
+                                          : (property.unitPriceWei * property.maxSupply * property.annualYieldBps) / BigInt(10000);
+                                        
+                                        // 验证保障金金额是否有效
+                                        if (guaranteeAmount === 0n || !guaranteeAmount) {
+                                          alert(`保障金金额为 0。\n\n请确保已设置单价和收益率，且最大供应量大于 0。\n\n保障金 = 最大供应量 × 单价 × 收益率`);
+                                          return;
+                                        }
+                                        
+                                        const actualGuaranteeAmount = formatEther(guaranteeAmount);
+                                        const maxTotalValue = formatEther(property.unitPriceWei * property.maxSupply);
+
+                                        const confirmDeposit = window.confirm(
+                                          `确认存入项目收益保障金？\n\n` +
+                                            `房产: ${property.name}\n` +
+                                            `最大发行总量: ${property.maxSupply.toString()} 份\n` +
+                                            `单价: ${formatEther(property.unitPriceWei)} TUSDC/份\n` +
+                                            `最大发行总价: ${maxTotalValue} TUSDC\n` +
+                                            `年化收益率: ${(Number(property.annualYieldBps) / 100).toFixed(2)}%\n` +
+                                            `保障金金额: ${actualGuaranteeAmount} TUSDC\n\n` +
+                                            `保障金 = 最大发行总价 × 收益率`
+                                        );
+                                        if (!confirmDeposit) return;
+
+                                        try {
+                                          await handleDepositGuaranteeFund(property.propertyId, guaranteeAmount);
+                                        } catch (err) {
+                                          console.error('存入保障金失败:', err);
+                                        }
+                                      }}
+                                      disabled={isPending || !rewardTokenAddress || property.maxSupply === 0n || property.unitPriceWei === 0n || property.annualYieldBps === 0n}
+                                      style={{
+                                        padding: '8px 12px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #10b981',
+                                        background: (isPending || !rewardTokenAddress || property.maxSupply === 0n || property.unitPriceWei === 0n || property.annualYieldBps === 0n) ? '#e5e7eb' : '#d1fae5',
+                                        cursor: (isPending || !rewardTokenAddress || property.maxSupply === 0n || property.unitPriceWei === 0n || property.annualYieldBps === 0n) ? 'not-allowed' : 'pointer',
+                                        fontSize: '13px',
+                                        color: (isPending || !rewardTokenAddress || property.maxSupply === 0n || property.unitPriceWei === 0n || property.annualYieldBps === 0n) ? '#6b7280' : '#065f46',
+                                        opacity: (isPending || !rewardTokenAddress || property.maxSupply === 0n || property.unitPriceWei === 0n || property.annualYieldBps === 0n) ? 0.7 : 1,
+                                      }}
+                                      title={
+                                        !rewardTokenAddress 
+                                          ? "请先设置收益代币地址" 
+                                          : property.maxSupply === 0n || property.unitPriceWei === 0n || property.annualYieldBps === 0n
+                                          ? "请先设置单价和收益率，且最大供应量大于 0（保障金 = 最大发行总价 × 收益率）" 
+                                          : "存入项目收益保障金（保障金 = 最大发行总价 × 收益率）"
+                                      }
+                                    >
+                                      💰 存入保障金 {guaranteeFundAmount !== null ? `(${guaranteeFundAmount} TUSDC)` : (property.maxSupply === 0n || property.unitPriceWei === 0n || property.annualYieldBps === 0n) ? '(请先设置参数)' : ''}
+                                    </button>
+                                  )
+                                ) : null}
+                                {/* 结束项目按钮 */}
+                                {property.projectEndTime === 0n && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!addresses) return;
+
+                                      // 检查保障金是否足够
+                                      if (!isGuaranteeSufficient) {
+                                        const required = guaranteeFundAmount || '未知';
+                                        const deposited = formatEther(depositedGuaranteeWei);
+                                        alert(
+                                          `无法结束项目：保障金不足！\n\n` +
+                                            `所需保障金：${required} TUSDC\n` +
+                                            `已存入保障金：${deposited} TUSDC\n\n` +
+                                            `请先存入足够的保障金后再结束项目。`
+                                        );
+                                        return;
+                                      }
+
+                                      // 构建确认消息，包含保障金信息
+                                      const guaranteeInfo = isGuaranteeSufficient
+                                        ? `保障金状态：✅ 已完成（已存入 ${formatEther(depositedGuaranteeWei)} TUSDC）\n`
+                                        : `保障金状态：❌ 不足（需要 ${guaranteeFundAmount || '未知'} TUSDC）\n`;
+
+                                      const confirmEnd = window.confirm(
+                                        `确认结束项目 "${property.name}"？\n\n` +
+                                          guaranteeInfo +
+                                          `\n项目结束后，所有持有者可以立即申请退款。\n` +
+                                          `此操作不可逆，请谨慎操作！`
+                                      );
+                                      if (!confirmEnd) return;
+
+                                      try {
+                                        setEndProjectStatus(prev => ({ ...prev, [propertyIdNum]: '提交交易中...' }));
+                                        
+                                        // 设置项目结束时间为当前时间
+                                        const endTime = BigInt(Math.floor(Date.now() / 1000));
+
+                                        // @ts-ignore - 避免深度类型推断问题
+                                        const hash = await writeContractAsync({
+                                          address: addresses.realEstateLogic,
+                                          abi: realEstateLogicAbi as any,
+                                          functionName: 'setProjectEndTime',
+                                          args: [property.propertyId, endTime],
+                                        } as any);
+
+                                        setEndProjectHashes(prev => ({ ...prev, [propertyIdNum]: hash }));
+                                        setEndProjectStatus(prev => ({ ...prev, [propertyIdNum]: `交易已提交：${hash.slice(0, 10)}...` }));
+                                      } catch (err) {
+                                        console.error('结束项目失败:', err);
+                                        let errorMsg = '结束项目失败，请稍后重试。';
+                                        if (err instanceof Error) {
+                                          errorMsg = err.message;
+                                          if (errorMsg.includes('insufficient yield pool')) {
+                                            errorMsg = '结束项目失败：保障金不足。请先存入足够的保障金后再结束项目。';
+                                          }
+                                        }
+                                        setEndProjectStatus(prev => ({ ...prev, [propertyIdNum]: errorMsg }));
+                                      }
+                                    }}
+                                    style={{
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      border: '1px solid #dc2626',
+                                      background: (!isGuaranteeSufficient || isPending) ? '#e5e7eb' : '#fee2e2',
+                                      cursor: (!isGuaranteeSufficient || isPending) ? 'not-allowed' : 'pointer',
+                                      fontSize: '13px',
+                                      color: (!isGuaranteeSufficient || isPending) ? '#6b7280' : '#991b1b',
+                                      opacity: (!isGuaranteeSufficient || isPending) ? 0.7 : 1,
+                                    }}
+                                    disabled={!isGuaranteeSufficient || isPending}
+                                    title={
+                                      !isGuaranteeSufficient
+                                        ? `保障金不足，无法结束项目。需要 ${guaranteeFundAmount || '未知'} TUSDC，当前已存入 ${formatEther(depositedGuaranteeWei)} TUSDC。`
+                                        : "结束项目后，所有持有者可立即申请退款"
+                                    }
+                                  >
+                                    {!isGuaranteeSufficient ? '⚠️ 保障金不足' : '🏁 结束项目'}
+                                  </button>
+                                )}
+                                
                               </div>
                             </div>
 
-                            {isExpanded && (
+                            {/* 结束项目交易状态 */}
+                            {endProjectHashes[propertyIdNum] && (
+                              <EndProjectTransactionStatus
+                                propertyId={propertyIdNum}
+                                hash={endProjectHashes[propertyIdNum]!}
+                                onSuccess={() => {
+                                  setEndProjectHashes(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[propertyIdNum];
+                                    return newState;
+                                  });
+                                  setEndProjectStatus(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[propertyIdNum];
+                                    return newState;
+                                  });
+                                }}
+                              />
+                            )}
+
+                            {/* 结束项目状态信息 */}
+                            {endProjectStatus[propertyIdNum] && !endProjectHashes[propertyIdNum] && (
                               <div style={{
-                                marginTop: '16px',
-                                paddingTop: '16px',
-                                borderTop: '1px solid #e2e8f0',
+                                marginTop: '12px',
+                                padding: '12px',
+                                borderRadius: '8px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#dc2626',
+                                fontSize: '14px',
                               }}>
-                                {/* 计算信息卡片 */}
-                                {mintForm.amount && Number(mintForm.amount) > 0 && (
-                                  <MintingCalculationCard 
-                                    property={property}
-                                    amount={Number(mintForm.amount)}
-                                  />
-                                )}
+                                {endProjectStatus[propertyIdNum]}
+                              </div>
+                            )}
 
-                                {/* 铸造表单 */}
-                                <form
-                                  onSubmit={(e) => handleMintShares(e, property.propertyId)}
-                                  style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '12px',
-                                    marginTop: '16px',
-                                  }}
-                                >
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                    <div>
-                                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                                        接收地址 *
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={mintForm.to}
-                                        onChange={(e) => setMintForms(prev => ({
-                                          ...prev,
-                                          [propertyIdNum]: { ...mintForm, to: e.target.value },
-                                        }))}
-                                        placeholder="0x..."
-                                        required
-                                        style={{
-                                          width: '100%',
-                                          padding: '10px 12px',
-                                          borderRadius: '8px',
-                                          border: '1px solid #cbd5e1',
-                                          fontSize: '14px',
-                                        }}
-                                      />
-                                    </div>
 
-                                    <div>
-                                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 500 }}>
-                                        数量 *
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={mintForm.amount}
-                                        onChange={(e) => setMintForms(prev => ({
-                                          ...prev,
-                                          [propertyIdNum]: { ...mintForm, amount: e.target.value },
-                                        }))}
-                                        placeholder="如：100"
-                                        required
-                                        min="1"
-                                        max={property.maxSupply > 0n ? Number(property.maxSupply - property.totalSupply) : undefined}
-                                        style={{
-                                          width: '100%',
-                                          padding: '10px 12px',
-                                          borderRadius: '8px',
-                                          border: '1px solid #cbd5e1',
-                                          fontSize: '14px',
-                                        }}
-                                      />
-                                      {property.maxSupply > 0n && (
-                                        <small style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                                          最多可铸造: {Number(property.maxSupply - property.totalSupply)} 个
-                                        </small>
-                                      )}
-                                    </div>
-                                  </div>
+                            {/* 保障金充值交易状态 */}
+                            {guaranteeDepositHashes[propertyIdNum] && (
+                              <GuaranteeDepositTransactionStatus
+                                propertyId={propertyIdNum}
+                                hash={guaranteeDepositHashes[propertyIdNum]!}
+                                onSuccess={() => {
+                                  setGuaranteeDepositHashes(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[propertyIdNum];
+                                    return newState;
+                                  });
+                                  setGuaranteeDepositStatus(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[propertyIdNum];
+                                    return newState;
+                                  });
+                                  // 刷新页面数据
+                                  window.location.reload();
+                                }}
+                              />
+                            )}
 
-                                  {/* 铸造建议 */}
-                                  <MintingRecommendation 
-                                    property={property}
-                                    currentAmount={mintForm.amount ? Number(mintForm.amount) : 0}
-                                  />
-
-                                  {mintHash && (
-                                    <MintTransactionStatus 
-                                      propertyId={propertyIdNum}
-                                      hash={mintHash}
-                                      onSuccess={() => {
-                                        // 交易成功后清空状态和表单
-                                        setMintHashes(prev => {
-                                          const newState = { ...prev };
-                                          delete newState[propertyIdNum];
-                                          return newState;
-                                        });
-                                        setMintStatus(prev => {
-                                          const newState = { ...prev };
-                                          delete newState[propertyIdNum];
-                                          return newState;
-                                        });
-                                        setMintForms(prev => ({
-                                          ...prev,
-                                          [propertyIdNum]: { to: address || '', amount: '' },
-                                        }));
-                                      }}
-                                    />
-                                  )}
-
-                                  {status && !mintHash && (
-                                    <div style={{
-                                      padding: '12px',
-                                      borderRadius: '8px',
-                                      background: 'rgba(239, 68, 68, 0.1)',
-                                      color: '#dc2626',
-                                      fontSize: '14px',
-                                    }}>
-                                      {status}
-                                    </div>
-                                  )}
-
-                                  <button
-                                    type="submit"
-                                    disabled={isPending}
-                                    style={{
-                                      padding: '10px 16px',
-                                      borderRadius: '8px',
-                                      border: 'none',
-                                      background: '#4338ca',
-                                      color: '#fff',
-                                      cursor: isPending ? 'not-allowed' : 'pointer',
-                                      fontSize: '14px',
-                                      fontWeight: 500,
-                                      opacity: isPending ? 0.7 : 1,
-                                    }}
-                                  >
-                                    {isPending ? '提交中...' : '铸造份额'}
-                                  </button>
-                                </form>
+                            {/* 保障金充值状态信息 */}
+                            {guaranteeDepositStatus[propertyIdNum] && !guaranteeDepositHashes[propertyIdNum] && (
+                              <div style={{
+                                marginTop: '12px',
+                                padding: '12px',
+                                borderRadius: '8px',
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                color: '#059669',
+                                fontSize: '14px',
+                              }}>
+                                {guaranteeDepositStatus[propertyIdNum]}
                               </div>
                             )}
                           </div>
@@ -1728,3 +1752,142 @@ export default function IssuancePage() {
     </>
   );
 }
+
+// 保障金充值交易状态组件
+function GuaranteeDepositTransactionStatus({
+  propertyId,
+  hash,
+  onSuccess,
+}: {
+  propertyId: number;
+  hash: `0x${string}`;
+  onSuccess: () => void;
+}) {
+  const { isLoading, isSuccess, isError } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  useEffect(() => {
+    if (isSuccess) {
+      onSuccess();
+    }
+  }, [isSuccess, onSuccess]);
+
+  if (isLoading) {
+    return (
+      <div style={{
+        marginTop: '12px',
+        padding: '12px',
+        borderRadius: '8px',
+        background: 'rgba(59, 130, 246, 0.1)',
+        color: '#1d4ed8',
+        fontSize: '14px',
+      }}>
+        保障金充值确认中... 哈希: {hash.slice(0, 10)}...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div style={{
+        marginTop: '12px',
+        padding: '12px',
+        borderRadius: '8px',
+        background: 'rgba(239, 68, 68, 0.1)',
+        color: '#dc2626',
+        fontSize: '14px',
+      }}>
+        ✗ 保障金充值失败: {hash.slice(0, 10)}... 请重试
+      </div>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <div style={{
+        marginTop: '12px',
+        padding: '12px',
+        borderRadius: '8px',
+        background: 'rgba(16, 185, 129, 0.1)',
+        color: '#059669',
+        fontSize: '14px',
+        fontWeight: 600,
+      }}>
+        ✓ 保障金充值成功！交易哈希: {hash.slice(0, 10)}...
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// 结束项目交易状态组件
+function EndProjectTransactionStatus({
+  propertyId,
+  hash,
+  onSuccess,
+}: {
+  propertyId: number;
+  hash: `0x${string}`;
+  onSuccess: () => void;
+}) {
+  const { isLoading, isSuccess, isError } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  useEffect(() => {
+    if (isSuccess) {
+      onSuccess();
+    }
+  }, [isSuccess, onSuccess]);
+
+  if (isLoading) {
+    return (
+      <div style={{
+        marginTop: '12px',
+        padding: '12px',
+        borderRadius: '8px',
+        background: 'rgba(239, 68, 68, 0.1)',
+        color: '#dc2626',
+        fontSize: '14px',
+      }}>
+        结束项目确认中... 哈希: {hash.slice(0, 10)}...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div style={{
+        marginTop: '12px',
+        padding: '12px',
+        borderRadius: '8px',
+        background: 'rgba(239, 68, 68, 0.1)',
+        color: '#dc2626',
+        fontSize: '14px',
+      }}>
+        交易失败: {hash.slice(0, 10)}...
+      </div>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <div style={{
+        marginTop: '12px',
+        padding: '12px',
+        borderRadius: '8px',
+        background: 'rgba(220, 38, 38, 0.1)',
+        color: '#991b1b',
+        fontSize: '14px',
+        fontWeight: 600,
+      }}>
+        ✓ 项目已结束！持有者现在可以申请退款了。交易哈希: {hash.slice(0, 10)}...
+      </div>
+    );
+  }
+
+  return null;
+}
+

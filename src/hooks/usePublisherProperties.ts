@@ -20,6 +20,9 @@ export interface PublisherProperty {
   unitPriceWei: bigint;
   annualYieldBps: bigint;
   lastYieldTimestamp: bigint;
+  createTime: bigint;
+  projectEndTime: bigint;
+  refundLockPeriod: bigint;
   // IPFS 元数据（异步加载）
   ipfsMetadata?: ERC1155Metadata;
   unitPriceUSD?: number; // 从 IPFS 获取的单价（USD）
@@ -104,6 +107,9 @@ export function usePublisherProperties() {
           unitPriceWei: property.unitPriceWei ? BigInt(property.unitPriceWei.toString()) : BigInt(0),
           annualYieldBps: property.annualYieldBps ? BigInt(property.annualYieldBps.toString()) : BigInt(0),
           lastYieldTimestamp: property.lastYieldTimestamp ? BigInt(property.lastYieldTimestamp.toString()) : BigInt(0),
+          createTime: property.createTime ? BigInt(property.createTime.toString()) : BigInt(0),
+          projectEndTime: property.projectEndTime ? BigInt(property.projectEndTime.toString()) : BigInt(0),
+          refundLockPeriod: property.refundLockPeriod ? BigInt(property.refundLockPeriod.toString()) : BigInt(365 * 24 * 60 * 60),
         });
       }
     });

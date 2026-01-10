@@ -34,8 +34,8 @@
 │   │   ├── page.tsx                 # 首页（热门资产介绍）
 │   │   ├── layout.tsx               # 全局 Layout（Navbar + Footer + Providers）
 │   │   ├── assets/                  # 资产展示页（全球房地产资产）
-│   │   ├── issuance/                # 房产发行页（创建房产、铸造份额）
-│   │   ├── distribution/             # 收益分配页（充值收益、提取收益）
+│   │   ├── issuance/                # 房产发行页（创建房产、设置参数、存入保障金、结束项目）
+│   │   ├── distribution/             # 收益分配页（查看收益池、充值收益、提取收益、退款）
 │   │   ├── roles/                   # 角色管理页（管理发布者角色）
 │   │   ├── transfer/                 # 转账中心（ERC1155 代币转账）
 │   │   ├── api/                     # API 路由
@@ -109,27 +109,43 @@
   - 地区筛选（例如：北美 / 欧洲 / 亚太等）
   - 类型筛选（商业地产 / 住宅地产 / 零售地产等）
   - 依年化收益或价格排序
+  - **自动过滤已结束项目**：已结束的项目（`projectEndTime > 0`）不会显示在资产列表中
 - 资产卡片支持 **收藏功能**：使用 localStorage 储存书签（`bookmarkedAssets`）
 - 点击资产可开启 `AssetDetailModal`，显示更完整的资产信息（包括链上数据和 IPFS 元数据）
 
 ### 房产发行（`/issuance`）
 
-- 发布者可以创建新的房地产资产
+- 发布者可以创建新的房地产资产并管理项目生命周期
 - 主要功能：
   - **创建房产**：填写房产信息（名称、描述、位置、类型、地区、价格、收益率等）
   - **上传图片**：自动上传到 IPFS 并生成元数据
-  - **设置链上参数**：设置单价和年化收益率
-  - **铸造份额**：为指定地址铸造房产份额代币（ERC1155）
+  - **设置链上参数**：设置单价（`unitPriceWei`）和年化收益率（`annualYieldBps`）
+  - **存入保障金**：根据实际铸造份额（`totalSupply`）计算所需保障金，发布者需在项目结束前存入足够的收益代币到收益池
+  - **结束项目**：项目结束前会检查保障金是否充足，只有保障金充足才能结束项目
 - 使用 `useIPFS` hook 处理 IPFS 上传
 - 使用 `usePublisherProperties` hook 管理发布者的房产列表
+- **保障金机制**：保障金金额 = `totalSupply × unitPriceWei × annualYieldBps / 10000`，确保发布者有足够资金支付投资者的年化收益
 
 ### 收益分配（`/distribution`）
 
-- 管理房地产资产的收益分配系统
+- 管理房地产资产的收益分配系统和退款功能
 - 主要功能：
-  - **充值收益**：发布者可以向收益池充值测试代币（TUSDC）
-  - **提取收益**：持有者根据持有的份额比例提取收益
-  - **查看收益池**：实时查看收益池总额和可提取金额
+  - **查看收益池信息**：
+    - 持有份额（`userShares`）
+    - 预计年化收益（`estimatedAnnualYield`）
+    - 收益池份额百分比（`poolSharePercent`）
+    - 年化收益率（`annualYieldBps`）
+    - 已提取收益（`claimedYield`）
+    - 总供应量（`totalSupply` / `maxSupply`）
+    - 总收益（`totalEarnedYield`）
+  - **充值收益**：发布者可以向收益池充值测试代币（TUSDC），用于支付投资者的收益
+  - **提取收益**：所有持有者（包括发布者和管理员）根据持有的份额比例提取收益
+    - 收益计算基于实际铸造份额（`totalSupply`），而非最大供应量（`maxSupply`）
+    - 收益锁定期为 1 年，或直到项目结束
+  - **退款功能**：所有用户（包括发布者和管理员）可以退款通过 `buyShares` 购买的份额
+    - 退款条件：锁定期满（1 年）或项目已结束
+    - 退款金额：按购买时的支付金额全额退还
+    - 注意：通过 `mintShares` 获得的份额无法退款（因为没有购买记录）
 - 支持按份额比例自动计算可提取收益
 - 使用 ERC20 代币（TestToken）作为收益代币
 
@@ -144,12 +160,55 @@
 
 ### 转账中心（`/transfer`）
 
-- ERC1155 代币转账功能
+- ERC1155 代币转账和销毁功能
 - 主要功能：
   - **查看持仓**：查看当前账户持有的所有房产份额
   - **转账份额**：将房产份额代币转账给其他地址
+  - **销毁份额**：销毁持有的份额代币（例如退款后）
   - **批量查询**：支持批量查询多个房产的余额
-- 使用标准的 ERC1155 `safeTransferFrom` 函数
+  - **实时刷新**：转账或销毁后自动刷新余额显示
+- 使用标准的 ERC1155 `safeTransferFrom` 和 `burn` 函数
+
+---
+
+## 🎯 核心业务逻辑
+
+### 收益分配方案
+
+- **基于实际铸造份额**：收益计算使用实际铸造份额（`totalSupply`）作为分母，而非最大供应量（`maxSupply`）
+- **收益锁定期**：收益锁定 1 年，或直到项目结束（`projectEndTime > 0`）
+- **收益提取**：持有者按持有份额比例提取收益，收益池会相应减少
+
+### 保障金机制
+
+- **保障金计算**：`requiredGuaranteeFund = totalSupply × unitPriceWei × annualYieldBps / 10000`
+  - 基于实际铸造份额（`totalSupply`），确保发布者有足够资金支付投资者的年化收益
+- **保障金检查**：项目结束前必须检查保障金是否充足
+  - 如果 `totalSupply == 0` 且 `yieldPools[propertyId] == 0`，保障金显示为不足
+- **项目结束限制**：只有保障金充足时才能结束项目（`setProjectEndTime`）
+
+### 购买与退款机制
+
+- **购买份额**（`buyShares`）：
+  - 用户支付 ETH，资金存入托管池（`escrowPools`）
+  - 创建购买记录（`PurchaseRecord`），包含购买数量、支付金额、购买时间
+  - 铸造 ERC1155 份额代币给购买者
+- **退款份额**（`refundShares`）：
+  - 退款条件：锁定期满（1 年）或项目已结束
+  - 从托管池退还购买时的支付金额
+  - 销毁对应的份额代币
+  - 注意：只有通过 `buyShares` 购买的份额才能退款（有购买记录），通过 `mintShares` 获得的份额无法退款
+
+### 项目生命周期
+
+1. **创建阶段**：发布者创建房产，设置金融参数
+2. **发行阶段**：用户购买份额或发布者铸造份额
+3. **运营阶段**：发布者定期充值收益，持有者提取收益
+4. **结束阶段**：
+   - 发布者存入足够的保障金
+   - 发布者结束项目（设置 `projectEndTime`）
+   - 项目结束后，已结束的项目不再显示在资产展示页面
+   - 持有者可以退款或继续持有份额
 
 ---
 
@@ -170,11 +229,26 @@
 - **`RealEstateLogic.sol`**
   - 通过接口 `IMyToken` 操作 `MyToken`，实现房地产的高层业务逻辑
   - 主要功能：
-    - 创建房产（`createProperty`）
-    - 铸造份额（`mintShares`）
-    - 设置金融参数（`setPropertyFinancials`）
-    - 收益分配（`depositYield`、`claimYield`）
-    - 角色管理（`addPublisher`、`applyForPublisher`）
+    - **房产管理**：
+      - 创建房产（`createProperty`）
+      - 设置金融参数（`setPropertyFinancials`）：单价和年化收益率
+      - 结束项目（`setProjectEndTime`）：需要保障金充足才能结束
+    - **份额管理**：
+      - 铸造份额（`mintShares`）：发布者可以直接铸造份额（不创建购买记录）
+      - 购买份额（`buyShares`）：用户购买份额，创建购买记录，资金存入托管池
+      - 退款份额（`refundShares`）：用户退款购买的份额，从托管池退还资金
+    - **收益分配**：
+      - 充值收益（`depositYield`）：发布者向收益池充值收益代币
+      - 提取收益（`claimYield`）：持有者按份额比例提取收益
+      - 收益计算基于实际铸造份额（`totalSupply`），而非最大供应量（`maxSupply`）
+    - **保障金机制**：
+      - 计算所需保障金（`calculateRequiredGuaranteeFund`）：基于 `totalSupply × unitPriceWei × annualYieldBps / 10000`
+      - 检查保障金是否充足（`isGuaranteeFundSufficient`）：确保收益池中有足够资金
+      - 项目结束前必须保障金充足
+    - **角色管理**：
+      - 添加发布者（`addPublisher`）：管理员添加发布者
+      - 申请发布者（`applyForPublisher`）：用户提交发布者申请
+      - 审核申请（`reviewPublisherApplication`）：管理员审核发布者申请
 
 - **`TestToken.sol`**
   - ERC20 测试代币，用于收益分配系统
