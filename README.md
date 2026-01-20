@@ -19,7 +19,8 @@
 
 ## 🎥 项目演示视频
 
-[![项目演示视频](https://img.youtube.com/vi/xqj9Jv-yIvs/maxresdefault.jpg)](https://youtu.be/xqj9Jv-yIvs)
+[![项目演示视频](https://img.youtube.com/vi/xqj9Jv-yIvs/maxresdefault.jpg)](https://youtu.be/faK5KfY7MRA)
+
 
 **点击上方图片观看完整演示视频**
 
